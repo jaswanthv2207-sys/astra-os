@@ -23,6 +23,7 @@ import {
   worldScaleAt,
 } from "../timeline";
 import { labelPortalRef } from "./label-overlay";
+import { OrbitMilestones } from "./orbit-milestones";
 import { ProjectCard } from "./planet-card";
 import { writePlanetPosition } from "./planet-registry";
 
@@ -727,6 +728,8 @@ function OrbitingPlanet({
   const { centre, radius, phase, speed, plane } = project.orbit;
   const pivot = React.useRef<THREE.Group>(null);
   const body = React.useRef<THREE.Group>(null);
+  /** Scales the milestone beads to the world's tightening orbit radius. */
+  const markerRing = React.useRef<THREE.Group>(null);
   const { centres } = useSceneData();
   const position = centres[centre] ?? ORBIT_CENTRES[centre];
   const { focus: focusOn, focusedId } = useUniverse();
@@ -804,6 +807,13 @@ function OrbitingPlanet({
       // Young worlds circle further out, tightening inward as they arrive.
       body.current.position.x =
         radius * radiusFactorAt(view, createdAt(project));
+    }
+    if (markerRing.current) {
+      // Milestones ride the same tightening path as the world itself
+      // (null while the timeline is at rest — the group isn't mounted).
+      markerRing.current.scale.setScalar(
+        radiusFactorAt(view, createdAt(project)),
+      );
     }
     if (hitRef.current) {
       const scale = timeScaleRef.current;
@@ -909,6 +919,14 @@ function OrbitingPlanet({
             />
           </mesh>
         </group>
+        {/* Ship milestones strung along this world's orbital path — mounted
+            only while the knowledge timeline travels (OrbitMilestones), and
+            scale-matched to the tightening orbit by the frame above. */}
+        <OrbitMilestones
+          project={project}
+          radius={radius}
+          ringRef={markerRing}
+        />
       </group>
     </group>
   );

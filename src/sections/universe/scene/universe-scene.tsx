@@ -25,6 +25,7 @@ import { labelPortalRef } from "./label-overlay";
 import { LensFlares } from "./lens-flares";
 import { LightParticles } from "./light-particles";
 import { NebulaField } from "./nebula";
+import { OrbitRings } from "./orbit-rings";
 import { Planets } from "./planets";
 import { ShootingStars } from "./shooting-stars";
 import { SpeedBlur } from "./speed-blur";
@@ -100,6 +101,9 @@ export function UniverseScene({
       <NebulaField reduced={reduced} />
       <StarField count={starCount} reduced={reduced} />
 
+      {/* The ellipses worlds travel — always on themed scenes, and on stock
+          scenes while the knowledge timeline travels (milestones ride them) */}
+      <OrbitRings />
       {/* Depth layers in front of the planets */}
       <Planets reduced={reduced} />
       {/* Slow rock rings beyond each system's reach — one rigid rotation per frame */}

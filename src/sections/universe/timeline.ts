@@ -131,6 +131,18 @@ export function phaseOffsetAt(date: number, now: number): number {
   return TIME_OMEGA * (date - now);
 }
 
+/**
+ * True once the viewer has travelled off the present by more than a minute —
+ * the single gate that arms the timeline's scene affordances (orbit
+ * milestone markers, orbital rings on stock scenes). The one-minute slack
+ * stops them flickering as `now` ticks while parked at the present, and it
+ * obeys the exactness contract: at `date === now` they are strictly off, so
+ * a timeline-less universe looks byte-for-byte untouched.
+ */
+export function timelineEngaged(date: number, now: number): boolean {
+  return date < now - 60_000;
+}
+
 /** Completion percent a project had reached at `date` — what the dossier's
  *  progress row reports while the viewer is parked in the past. */
 export function progressAt(
