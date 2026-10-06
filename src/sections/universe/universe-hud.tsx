@@ -4,9 +4,11 @@ import * as React from "react";
 import { motion, useReducedMotion } from "framer-motion";
 
 import { Badge, Button, GlassCard, Icon } from "@/components";
-import { useSceneProjects } from "@/hooks/use-scene-data";
+import { useSceneData, useSceneProjects } from "@/hooks/use-scene-data";
 import { useUniverse } from "@/hooks/use-universe";
 import { cn } from "@/lib/utils";
+
+import { CreateUniverse, CreateUniverseButton } from "./create-universe";
 
 /* ────────────────────────────────────────────────────────────────────────── *
  * UniverseHud — the futuristic-OS overlay floating over the 3D scene.
@@ -18,12 +20,12 @@ import { cn } from "@/lib/utils";
  * interactive chips opt back in.
  * ────────────────────────────────────────────────────────────────────────── */
 
-/** Telemetry rows for a scene — "Bodies in orbit" tracks the active graph. */
-function telemetry(bodyCount: number) {
+/** Telemetry rows for a scene — counts track the active graph + ambient. */
+function telemetry(bodyCount: number, starCount: number) {
   return [
     {
       label: "Stars mapped",
-      value: 9_000,
+      value: starCount,
       format: (n: number) => n.toLocaleString(),
     },
     { label: "Nebulae", value: 5, format: (n: number) => `0${n}` },
@@ -79,7 +81,9 @@ export function UniverseHud({
   const [logIndex, setLogIndex] = React.useState(0);
   const { focusedId, focus: focusOn, release } = useUniverse();
   const projects = useSceneProjects();
+  const scene = useSceneData();
   const focusedProject = projects.find((project) => project.id === focusedId);
+  const [creating, setCreating] = React.useState(false);
 
   /* Rotate the signal log — one line swaps every 2.6s. */
   React.useEffect(() => {
@@ -129,11 +133,12 @@ export function UniverseHud({
           </span>
           <span aria-hidden="true" className="bg-line-strong h-4 w-px" />
           <span className="text-ink-faint text-micro tracking-caps font-mono">
-            UNIVERSE&nbsp;/&nbsp;LAYER&nbsp;0
+            {scene.universe ? scene.name.toUpperCase() : "UNIVERSE / LAYER 0"}
           </span>
         </div>
 
         <div className="flex items-center gap-2">
+          <CreateUniverseButton onClick={() => setCreating(true)} />
           <Badge
             variant={ready ? "success" : "warning"}
             dot
@@ -150,6 +155,8 @@ export function UniverseHud({
         </div>
       </motion.header>
 
+      <CreateUniverse open={creating} onOpenChange={setCreating} />
+
       {/* ── side rails ───────────────────────────────────────────────── */}
       <div className="flex min-h-0 flex-1 items-center justify-between gap-4 py-4">
         {/* left: telemetry */}
@@ -161,7 +168,10 @@ export function UniverseHud({
           <GlassCard tone="strong" padding="md" className="pointer-events-auto">
             <p className="eyebrow mb-4">Telemetry</p>
             <dl className="space-y-3">
-              {telemetry(projects.length).map((row) => (
+              {telemetry(
+                projects.length,
+                scene.ambient?.starCount ?? 9_000,
+              ).map((row) => (
                 <div
                   key={row.label}
                   className="flex items-baseline justify-between gap-3"
@@ -204,7 +214,7 @@ export function UniverseHud({
             )}
           </motion.div>
           <p className="text-ink-faint text-micro tracking-caps font-mono">
-            Sector 00 · Orion Rim
+            {scene.ambient?.sectorLabel ?? "Sector 00 · Orion Rim"}
           </p>
         </div>
 
