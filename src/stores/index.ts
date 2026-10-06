@@ -7,7 +7,7 @@
  *   stores/search-store.ts   – /universe AI search text + matched/frame ids
  *   stores/assistant-store.ts– /universe Astra orb open state + transcript
  *   stores/timeline-store.ts – /universe knowledge-timeline viewed date
- *   stores/preferences.ts    – persisted user preferences (localStorage)
+ *   stores/workspace-store.ts– multi-universe workspace (persisted)
  *
  * Server state belongs in React Query (`src/services`), not Zustand.
  * Consumers read stores through `src/hooks` — never import them from
@@ -32,3 +32,9 @@ export {
   type AssistantState,
 } from "./assistant-store";
 export { useTimelineStore, type TimelineState } from "./timeline-store";
+export {
+  useWorkspaceStore,
+  flushWorkspace,
+  type WorkspaceState,
+  type WorkspaceBackup,
+} from "./workspace-store";

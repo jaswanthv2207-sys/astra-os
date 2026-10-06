@@ -4,7 +4,8 @@ import * as React from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 
 import { Button, Icon } from "@/components";
-import { PROJECTS, type Project } from "@/data";
+import { type Project } from "@/data";
+import { useSceneProjects } from "@/hooks/use-scene-data";
 import {
   useAssistant,
   type AssistantAction,
@@ -491,9 +492,10 @@ export function UniverseAssistant() {
   const [draft, setDraft] = React.useState("");
   const [thinking, setThinking] = React.useState(false);
 
+  const projects = useSceneProjects();
   const context = React.useMemo(
-    () => PROJECTS.find((project) => project.id === focusedId) ?? null,
-    [focusedId],
+    () => projects.find((project) => project.id === focusedId) ?? null,
+    [projects, focusedId],
   );
   const suggestions = React.useMemo(() => suggestReplies(context), [context]);
 

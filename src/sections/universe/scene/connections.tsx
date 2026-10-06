@@ -4,7 +4,8 @@ import * as React from "react";
 import { invalidate, useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 
-import { PROJECTS, PROJECT_LINKS, type Project } from "@/data";
+import { type Project } from "@/data";
+import { useSceneData } from "@/hooks/use-scene-data";
 import { useSearchMatches } from "@/hooks/use-search";
 import { readTimelineDate } from "@/hooks/use-timeline";
 
@@ -433,17 +434,18 @@ export interface ConnectionsProps {
 export function Connections({ reduced = false }: ConnectionsProps) {
   const dpr = useThree((state) => state.viewport.dpr);
   const matchedIds = useSearchMatches();
+  const { projects, links: sceneLinks } = useSceneData();
 
   const links = React.useMemo<BeamPair[]>(() => {
-    const byId = new Map(PROJECTS.map((project) => [project.id, project]));
+    const byId = new Map(projects.map((project) => [project.id, project]));
     const pairs: BeamPair[] = [];
-    for (const link of PROJECT_LINKS) {
+    for (const link of sceneLinks) {
       const a = byId.get(link.from);
       const b = byId.get(link.to);
       if (a && b && a !== b) pairs.push({ a, b });
     }
     return pairs;
-  }, []);
+  }, [projects, sceneLinks]);
 
   const scene = React.useMemo(
     () => (links.length > 0 ? buildScene(links) : null),

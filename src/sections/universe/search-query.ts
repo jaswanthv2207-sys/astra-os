@@ -1,4 +1,5 @@
-import { PROJECTS, type Project } from "@/data";
+import { type Project } from "@/data";
+import { sceneProjects } from "@/data/scene-data";
 
 /* ────────────────────────────────────────────────────────────────────────── *
  * search-query — the local "understanding" layer behind Astra's asks.
@@ -183,13 +184,28 @@ function stackRegex(stack: string): RegExp {
   return new RegExp(`\\b${pattern}\\b`, "i");
 }
 
-const stackKeys = [...new Set(PROJECTS.flatMap((p) => [...p.stack]))].map(
-  (display) => ({
-    key: display.toLowerCase().replace(/[^a-z0-9]/g, ""),
-    display,
-    regex: stackRegex(display),
-  }),
-);
+/**
+ * Stack vocabulary for the current scene. Computed lazily and memoised on
+ * the projects array identity, so `parseQuery` (called per ask) never
+ * rebuilds regexes — and a universe swap naturally invalidates the cache.
+ */
+type StackKey = { key: string; display: string; regex: RegExp };
+
+let stackKeySource: readonly Project[] | null = null;
+let stackKeyCache: StackKey[] = [];
+
+function stackKeys(projects: readonly Project[]): StackKey[] {
+  if (stackKeySource === projects) return stackKeyCache;
+  stackKeySource = projects;
+  stackKeyCache = [...new Set(projects.flatMap((p) => [...p.stack]))].map(
+    (display) => ({
+      key: display.toLowerCase().replace(/[^a-z0-9]/g, ""),
+      display,
+      regex: stackRegex(display),
+    }),
+  );
+  return stackKeyCache;
+}
 
 const tagPatterns = Object.entries(TAG_PHRASES).map(([tag, phrases]) => ({
   tag,
@@ -236,11 +252,14 @@ export function parseQuery(raw: string): SearchIntent | null {
   const query = raw.trim();
   if (!query) return null;
 
+  const projects = sceneProjects();
   const open = OPEN_RE.test(query);
   const recent = RECENT_RE.test(query);
 
   /* Layer 1 — technologies ("Fast API", "Next.js", "Rust"). */
-  const stackKeysHit = stackKeys.filter((entry) => entry.regex.test(query));
+  const stackKeysHit = stackKeys(projects).filter((entry) =>
+    entry.regex.test(query),
+  );
   /* Layer 2 — classification tags ("AI", "hackathon", "notes"). */
   const tagHits = tagPatterns
     .filter((entry) => entry.regexes.some((regex) => regex.test(query)))
@@ -253,7 +272,7 @@ export function parseQuery(raw: string): SearchIntent | null {
 
   if (hasFilter) {
     /* Structured layers combine as AND: "AI projects using Fast API". */
-    results = PROJECTS.filter(
+    results = projects.filter(
       (project) =>
         (stackKeysHit.length === 0 ||
           project.stack.some((s) =>
@@ -281,7 +300,7 @@ export function parseQuery(raw: string): SearchIntent | null {
       .join(" · ");
   } else if (recent) {
     /* "latest …" with no other constraint — the freshest handful. */
-    results = byRecency(PROJECTS).slice(0, open ? 1 : 3);
+    results = byRecency(projects).slice(0, open ? 1 : 3);
     reason = "recent";
     detail = "most recent";
   } else {
@@ -291,7 +310,7 @@ export function parseQuery(raw: string): SearchIntent | null {
       .replace(/[^a-z0-9\s+#.-]/g, " ")
       .split(/\s+/)
       .filter((word) => word.length >= 2 && !STOPWORDS.has(word));
-    const scored = PROJECTS.map((project) => ({
+    const scored = projects.map((project) => ({
       project,
       score: terms.reduce(
         (total, term) => total + (haystack(project).includes(term) ? 1 : 0),

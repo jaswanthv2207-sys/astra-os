@@ -4,7 +4,8 @@ import * as React from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 
-import { ORBIT_CENTRES, PROJECTS } from "@/data";
+import type { Project } from "@/data";
+import { useSceneData } from "@/hooks/use-scene-data";
 
 /* ────────────────────────────────────────────────────────────────────────── *
  * AsteroidBelts — three slow rock rings, one beyond each invisible system
@@ -18,9 +19,10 @@ import { ORBIT_CENTRES, PROJECTS } from "@/data";
  * orbit motion costs a single `rotation.y` increment per frame instead of
  * hundreds of matrix writes, which is what keeps this free.
  *
- * Placement, tilt and speed are derived from `@/data` at module init, so
- * the belts stay correct if worlds are ever re-tuned. Reduced motion
- * freezes each ring on a deterministic starting angle.
+ * Placement, tilt and speed are derived from the active scene at render
+ * time, so the belts stay correct for stock *and* generated universes (a
+ * centre with no worlds simply gets no ring). Reduced motion freezes each
+ * ring on a deterministic starting angle.
  * ────────────────────────────────────────────────────────────────────────── */
 
 /** Rock counts and speeds per centre — one entry per ORBIT_CENTRES slot. */
@@ -38,16 +40,22 @@ interface BeltSpec {
   seed: number;
 }
 
-function buildBeltSpecs(): BeltSpec[] {
-  return ORBIT_CENTRES.map((centre, index) => {
-    const worlds = PROJECTS.filter((project) => project.orbit.centre === index);
+function buildBeltSpecs(
+  centres: readonly (readonly [number, number, number])[],
+  projects: readonly Project[],
+): BeltSpec[] {
+  const specs: BeltSpec[] = [];
+  centres.forEach((centre, index) => {
+    const worlds = projects.filter((project) => project.orbit.centre === index);
+    /* Generated universes may leave a centre empty — no worlds, no belt. */
+    if (worlds.length === 0) return;
     const lead = worlds.reduce((outer, world) =>
       world.orbit.radius >= outer.orbit.radius ? world : outer,
     );
     const reach = Math.max(
       ...worlds.map((world) => world.orbit.radius + world.planet.radius),
     );
-    return {
+    specs.push({
       position: [centre[0], centre[1], centre[2]],
       plane: [...lead.orbit.plane],
       inner: reach + 3,
@@ -55,11 +63,10 @@ function buildBeltSpecs(): BeltSpec[] {
       speed: RING_SPEEDS[index % RING_SPEEDS.length],
       count: ROCKS_PER_RING,
       seed: index * 17.7 + 3.1,
-    };
+    });
   });
+  return specs;
 }
-
-const BELT_SPECS = buildBeltSpecs();
 
 /** Deterministic PRNG — belts look identical on every visit and capture. */
 function rng(seed: number) {
@@ -155,9 +162,17 @@ export interface AsteroidBeltsProps {
 }
 
 export function AsteroidBelts({ reduced = false }: AsteroidBeltsProps) {
+  const { centres, projects } = useSceneData();
+  /* Specs depend only on the scene — one rebuild per universe swap, and the
+     BeltRing internals key off the spec so a swap re-instances the meshes. */
+  const specs = React.useMemo(
+    () => buildBeltSpecs(centres, projects),
+    [centres, projects],
+  );
+
   return (
     <>
-      {BELT_SPECS.map((spec) => (
+      {specs.map((spec) => (
         <BeltRing
           key={`${spec.position[0]},${spec.position[2]}`}
           spec={spec}

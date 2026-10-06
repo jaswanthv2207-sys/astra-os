@@ -20,6 +20,7 @@ export interface UseTimelineResult {
   floor: TimelineState["floor"];
   setDate: TimelineState["setDate"];
   resetToNow: TimelineState["resetToNow"];
+  setWindow: TimelineState["setWindow"];
 }
 
 /** Everything in one view — for the timeline control itself. */
@@ -29,7 +30,8 @@ export function useTimeline(): UseTimelineResult {
   const floor = useTimelineStore((state) => state.floor);
   const setDate = useTimelineStore((state) => state.setDate);
   const resetToNow = useTimelineStore((state) => state.resetToNow);
-  return { date, now, floor, setDate, resetToNow };
+  const setWindow = useTimelineStore((state) => state.setWindow);
+  return { date, now, floor, setDate, resetToNow, setWindow };
 }
 
 /** Just the viewed date — for the planet pills and the dossier progress row. */
@@ -56,4 +58,13 @@ export function timelineIsPast(): boolean {
 /** Snap back to the present (Escape chain / remount guard). */
 export function resetTimeline(): void {
   useTimelineStore.getState().resetToNow();
+}
+
+/**
+ * Re-target the scrub window when the shell swaps universes (module-reader
+ * shape, matching the other functions in this file — the shell runs outside
+ * any timeline subscription).
+ */
+export function setTimelineWindow(floor: number): void {
+  useTimelineStore.getState().setWindow(floor);
 }

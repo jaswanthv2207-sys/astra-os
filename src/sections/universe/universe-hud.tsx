@@ -4,7 +4,7 @@ import * as React from "react";
 import { motion, useReducedMotion } from "framer-motion";
 
 import { Badge, Button, GlassCard, Icon } from "@/components";
-import { PROJECTS } from "@/data";
+import { useSceneProjects } from "@/hooks/use-scene-data";
 import { useUniverse } from "@/hooks/use-universe";
 import { cn } from "@/lib/utils";
 
@@ -18,20 +18,23 @@ import { cn } from "@/lib/utils";
  * interactive chips opt back in.
  * ────────────────────────────────────────────────────────────────────────── */
 
-const TELEMETRY = [
-  {
-    label: "Stars mapped",
-    value: 9_000,
-    format: (n: number) => n.toLocaleString(),
-  },
-  { label: "Nebulae", value: 5, format: (n: number) => `0${n}` },
-  {
-    label: "Bodies in orbit",
-    value: PROJECTS.length,
-    format: (n: number) => n.toString().padStart(2, "0"),
-  },
-  { label: "Drift", value: 0.42, format: (n: number) => `${n.toFixed(2)}°` },
-] as const;
+/** Telemetry rows for a scene — "Bodies in orbit" tracks the active graph. */
+function telemetry(bodyCount: number) {
+  return [
+    {
+      label: "Stars mapped",
+      value: 9_000,
+      format: (n: number) => n.toLocaleString(),
+    },
+    { label: "Nebulae", value: 5, format: (n: number) => `0${n}` },
+    {
+      label: "Bodies in orbit",
+      value: bodyCount,
+      format: (n: number) => n.toString().padStart(2, "0"),
+    },
+    { label: "Drift", value: 0.42, format: (n: number) => `${n.toFixed(2)}°` },
+  ] as const;
+}
 
 const LOG_LINES = [
   "kernel.sync() → graph aligned",
@@ -75,7 +78,8 @@ export function UniverseHud({
   const clock = useClock(Boolean(reduce));
   const [logIndex, setLogIndex] = React.useState(0);
   const { focusedId, focus: focusOn, release } = useUniverse();
-  const focusedProject = PROJECTS.find((project) => project.id === focusedId);
+  const projects = useSceneProjects();
+  const focusedProject = projects.find((project) => project.id === focusedId);
 
   /* Rotate the signal log — one line swaps every 2.6s. */
   React.useEffect(() => {
@@ -157,7 +161,7 @@ export function UniverseHud({
           <GlassCard tone="strong" padding="md" className="pointer-events-auto">
             <p className="eyebrow mb-4">Telemetry</p>
             <dl className="space-y-3">
-              {TELEMETRY.map((row) => (
+              {telemetry(projects.length).map((row) => (
                 <div
                   key={row.label}
                   className="flex items-baseline justify-between gap-3"
@@ -278,7 +282,7 @@ export function UniverseHud({
           eye gaze) hit-test this 1px target — it must not fall through. */}
       <nav aria-label="Fly to a world" className="pointer-events-auto sr-only">
         <ul>
-          {PROJECTS.map((project) => (
+          {projects.map((project) => (
             <li key={project.id}>
               <button type="button" onClick={() => focusOn(project.id)}>
                 Fly to {project.name}

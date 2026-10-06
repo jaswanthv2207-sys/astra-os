@@ -1,4 +1,5 @@
-import { PROJECTS, type Project } from "@/data";
+import { type Project } from "@/data";
+import { sceneProjects } from "@/data/scene-data";
 
 /* ────────────────────────────────────────────────────────────────────────── *
  * Timeline — pure time-travel maths for the knowledge timeline.
@@ -145,7 +146,7 @@ export function progressAt(
 /** How many worlds exist at `date` (the control's "n / 8" readout). */
 export function bornCount(date: number): number {
   let count = 0;
-  for (const project of PROJECTS) {
+  for (const project of sceneProjects()) {
     if (date > createdAt(project)) count++;
   }
   return count;

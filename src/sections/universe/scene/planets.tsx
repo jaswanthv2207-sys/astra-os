@@ -5,7 +5,8 @@ import { Html } from "@react-three/drei";
 import { invalidate, useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 
-import { ORBIT_CENTRES, PROJECTS, type Project } from "@/data";
+import { ORBIT_CENTRES, type Project } from "@/data";
+import { useSceneData, useSceneProjects } from "@/hooks/use-scene-data";
 import { useSearchMatches } from "@/hooks/use-search";
 import {
   readTimelineDate,
@@ -726,7 +727,8 @@ function OrbitingPlanet({
   const { centre, radius, phase, speed, plane } = project.orbit;
   const pivot = React.useRef<THREE.Group>(null);
   const body = React.useRef<THREE.Group>(null);
-  const position = ORBIT_CENTRES[centre];
+  const { centres } = useSceneData();
+  const position = centres[centre] ?? ORBIT_CENTRES[centre];
   const { focus: focusOn, focusedId } = useUniverse();
   const matchedIds = useSearchMatches();
   const [hovered, setHovered] = React.useState(false);
@@ -918,6 +920,7 @@ export interface PlanetsProps {
 }
 
 export function Planets({ reduced = false }: PlanetsProps) {
+  const projects = useSceneProjects();
   /* If we unmount while the pointer hovers a hit target, drop the cursor. */
   React.useEffect(
     () => () => {
@@ -928,7 +931,7 @@ export function Planets({ reduced = false }: PlanetsProps) {
 
   return (
     <>
-      {PROJECTS.map((project, index) => (
+      {projects.map((project, index) => (
         <OrbitingPlanet
           key={project.id}
           project={project}

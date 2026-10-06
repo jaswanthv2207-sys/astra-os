@@ -4,7 +4,8 @@ import * as React from "react";
 import { AnimatePresence, motion, type Variants } from "framer-motion";
 
 import { Badge, Button, Icon } from "@/components";
-import { PROJECTS, type Project, type ProjectStatus } from "@/data";
+import { type Project, type ProjectStatus } from "@/data";
+import { useSceneProjects } from "@/hooks/use-scene-data";
 import { useTimeline } from "@/hooks/use-timeline";
 import { useUniverse } from "@/hooks/use-universe";
 import type { IconName } from "@/lib/icons";
@@ -271,7 +272,8 @@ export function ProjectDetailPanel({
   reduce = false,
 }: ProjectDetailPanelProps) {
   const { focusedId } = useUniverse();
-  const project = PROJECTS.find((entry) => entry.id === focusedId);
+  const projects = useSceneProjects();
+  const project = projects.find((entry) => entry.id === focusedId);
 
   /* Keyed by world so switching planets replays the entrance — the camera
      glide and the panel slide read as one continuous move. */
@@ -284,17 +286,24 @@ export function ProjectDetailPanel({
   );
 }
 
-function Dossier({ project, reduce }: { project: Project; reduce: boolean }) {
+function Dossier({
+  project,
+  reduce,
+}: {
+  project: Project;
+  reduce: boolean;
+}) {
   const { focus, release } = useUniverse();
+  const projects = useSceneProjects();
   const panelRef = React.useRef<HTMLElement>(null);
   const [copied, setCopied] = React.useState(false);
   const copyTimer = React.useRef<number | undefined>(undefined);
 
   const status = STATUS_META[project.status];
   const { atmosphere } = project.planet;
-  const index = PROJECTS.findIndex((entry) => entry.id === project.id);
+  const index = projects.findIndex((entry) => entry.id === project.id);
   const related = project.related
-    .map((id) => PROJECTS.find((entry) => entry.id === id))
+    .map((id) => projects.find((entry) => entry.id === id))
     .filter((entry): entry is Project => Boolean(entry));
 
   /* Take focus on open so screen readers announce the dossier, and give it
@@ -307,11 +316,11 @@ function Dossier({ project, reduce }: { project: Project; reduce: boolean }) {
   const step = React.useCallback(
     (delta: number) => {
       if (index < 0) return;
-      const next = (index + delta + PROJECTS.length) % PROJECTS.length;
-      const target = PROJECTS[next];
+      const next = (index + delta + projects.length) % projects.length;
+      const target = projects[next];
       if (target) focus(target.id);
     },
-    [focus, index],
+    [focus, index, projects],
   );
 
   const copyBrief = React.useCallback(async () => {
@@ -371,7 +380,7 @@ function Dossier({ project, reduce }: { project: Project; reduce: boolean }) {
             />
             <div className="min-w-0">
               <p className="text-ink-muted text-micro tracking-caps font-mono">
-                Dossier · {index + 1} / {PROJECTS.length}
+                Dossier · {index + 1} / {projects.length}
               </p>
               <h2 className="text-ink truncate text-lg font-semibold tracking-tight">
                 {project.name}

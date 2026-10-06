@@ -6,7 +6,7 @@ import { invalidate, useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 
-import { PROJECTS } from "@/data";
+import { getSceneData } from "@/data/scene-data";
 import { useSearchFrame } from "@/hooks/use-search";
 import { useUniverse } from "@/hooks/use-universe";
 
@@ -241,7 +241,9 @@ export function CameraRig({ reduced = false }: CameraRigProps) {
       const key = `focus:${focusedId}`;
       if (intentKey.current === key) return;
       const planet = readPlanetPosition(focusedId);
-      const project = PROJECTS.find((entry) => entry.id === focusedId);
+      const project = getSceneData().projects.find(
+        (entry) => entry.id === focusedId,
+      );
       if (!planet || !project) return;
 
       // May still be in cinematic mode if the focus came from the HUD's
@@ -304,7 +306,9 @@ export function CameraRig({ reduced = false }: CameraRigProps) {
       const points: { pos: THREE.Vector3; radius: number }[] = [];
       for (const id of frameIds) {
         const pos = readPlanetPosition(id);
-        const project = PROJECTS.find((entry) => entry.id === id);
+        const project = getSceneData().projects.find(
+          (entry) => entry.id === id,
+        );
         if (pos && project) points.push({ pos, radius: project.planet.radius });
       }
       if (points.length === 0) return; // registry not warm yet — retry later

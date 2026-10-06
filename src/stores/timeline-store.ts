@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-import { PROJECTS } from "@/data";
+import { getSceneData } from "@/data/scene-data";
 
 /* ────────────────────────────────────────────────────────────────────────── *
  * Timeline store — the /universe knowledge timeline's intent.
@@ -14,12 +14,15 @@ import { PROJECTS } from "@/data";
  * `now` is captured once at module init (not re-read per call) so "reset to
  * present" and every "am I in the past?" comparison agree to the same tick.
  * Pure time-travel maths lives in `sections/universe/timeline.ts`.
+ *
+ * Workspace: the floor comes from the active scene (stock floor is the same
+ * min-createdAt the module once computed inline). `setWindow()` re-targets
+ * both bounds when the shell swaps universes and clamps the viewed date into
+ * the new range, so a scene change can never strand the scrub outside it.
  * ────────────────────────────────────────────────────────────────────────── */
 
 /** Earliest creation in the graph — the beginning of the knowledge story. */
-const FLOOR = Math.min(
-  ...PROJECTS.map((project) => Date.parse(project.createdAt)),
-);
+const FLOOR = getSceneData().floor;
 
 /** The present, captured once (module init runs on both server and client;
  * only client-side consumers ever render it, so there's no hydration risk). */
@@ -36,6 +39,8 @@ export interface TimelineState {
   setDate: (date: number) => void;
   /** Snap back to the present. */
   resetToNow: () => void;
+  /** Re-target the scrub window on a universe swap (clamps `date`). */
+  setWindow: (floor: number) => void;
 }
 
 export const useTimelineStore = create<TimelineState>((set, get) => ({
@@ -49,5 +54,12 @@ export const useTimelineStore = create<TimelineState>((set, get) => ({
   },
   resetToNow: () => {
     if (get().date !== get().now) set({ date: get().now });
+  },
+  setWindow: (floor) => {
+    const { floor: currentFloor, now } = get();
+    if (floor === currentFloor) return;
+    const date = get().date;
+    const clamped = date < floor ? floor : date > now ? now : date;
+    set({ floor, date: clamped });
   },
 }));

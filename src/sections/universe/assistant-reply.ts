@@ -1,4 +1,5 @@
-import { PROJECTS, type Project } from "@/data";
+import { type Project } from "@/data";
+import { sceneProjects } from "@/data/scene-data";
 import type { IconName } from "@/lib/icons";
 
 import { parseQuery } from "./search-query";
@@ -70,11 +71,11 @@ const CONTEXT_RE = /\b(it|it's|its|this|this one|current|selected|focused)\b/i;
 /** Find a project whose name (or a distinctive word of it) occurs in `text`. */
 function matchProjectName(text: string): Project | undefined {
   const lower = text.toLowerCase();
-  const full = PROJECTS.find((project) =>
+  const full = sceneProjects().find((project) =>
     lower.includes(project.name.toLowerCase()),
   );
   if (full) return full;
-  return PROJECTS.find((project) =>
+  return sceneProjects().find((project) =>
     project.name
       .toLowerCase()
       .split(/\s+/)
@@ -141,7 +142,7 @@ function stackReply(target: Project): AssistantReply {
 
 function relatedReply(target: Project): AssistantReply {
   const linked = target.related
-    .map((id) => PROJECTS.find((project) => project.id === id))
+    .map((id) => sceneProjects().find((project) => project.id === id))
     .filter((project): project is Project => Boolean(project));
   if (linked.length === 0) return digestReply(target);
   const beams = `knowledge beam${linked.length === 1 ? "" : "s"}`;
@@ -160,7 +161,7 @@ function relatedReply(target: Project): AssistantReply {
 
 function digestReply(target: Project): AssistantReply {
   const linked = target.related
-    .map((id) => PROJECTS.find((project) => project.id === id))
+    .map((id) => sceneProjects().find((project) => project.id === id))
     .filter((project): project is Project => Boolean(project));
   const linkedLine = linked.length
     ? `\nLinked to ${listNames(linked.map((p) => p.name))}.`

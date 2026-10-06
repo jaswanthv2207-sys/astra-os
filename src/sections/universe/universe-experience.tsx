@@ -6,15 +6,21 @@ import { useRouter } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 
 import { Button, Icon } from "@/components";
+import { buildActiveScene, getSceneData, setSceneData } from "@/data/scene-data";
 import { useAssistantOpen } from "@/hooks/use-assistant";
 import { useSearchClear, useSearchFrame } from "@/hooks/use-search";
+import { useSceneData } from "@/hooks/use-scene-data";
 import {
   readTimelineDate,
   readTimelineNow,
   resetTimeline,
+  setTimelineWindow,
 } from "@/hooks/use-timeline";
 import { useUniverse } from "@/hooks/use-universe";
+import { useActiveUniverseRecord } from "@/hooks/use-workspace";
 import { cn } from "@/lib/utils";
+
+import { syncPlanetRegistry } from "./scene/planet-registry";
 
 import { UniverseHud } from "./universe-hud";
 import { ProjectDetailPanel } from "./project-detail-panel";
@@ -107,6 +113,43 @@ export function UniverseExperience() {
   const [booted, setBooted] = React.useState(false);
   const [exiting, setExiting] = React.useState(false);
   const starCount = React.useRef(9000);
+
+  /* ── active scene ──────────────────────────────────────────────────────
+     The record → scene build is memoised and *published during render*
+     (before children render), so every keyed child reads the right
+     projects/links on its very first pass — no stale-stock frame. With no
+     active universe this is `STOCK_SCENE`, the byte-identical default. */
+  const record = useActiveUniverseRecord();
+  const scene = React.useMemo(() => {
+    const next = buildActiveScene(record);
+    /* Publish + resync only on a real swap: `buildUniverseScene` returns the
+       identical scene object for unrelated record edits (task toggles), so
+       re-seeding the position registry never happens mid-session. */
+    if (getSceneData() !== next) {
+      setSceneData(next);
+      syncPlanetRegistry();
+    }
+    return next;
+  }, [record]);
+  /* Re-read through the hook so a scene swap published elsewhere still
+     re-renders the shell (and thus its keys). */
+  useSceneData();
+
+  /* Universe swap: retarget the timeline window and unwind every
+     scene-scoped layer (focus, reveal, Astra, time travel) so nothing
+     points at a planet that no longer exists. Runs in a layout effect —
+     before paint — so the timeline never shows the previous universe's
+     floor for a frame. */
+  const lastSceneId = React.useRef(scene.id);
+  React.useLayoutEffect(() => {
+    setTimelineWindow(scene.floor);
+    if (lastSceneId.current === scene.id) return;
+    lastSceneId.current = scene.id;
+    release();
+    clearSearch();
+    closeAssistant();
+    resetTimeline();
+  }, [scene.id, scene.floor, clearSearch, closeAssistant, release]);
 
   /* Capability probe + star budget run once on the client. */
   React.useEffect(() => {
@@ -220,6 +263,11 @@ export function UniverseExperience() {
   }, []);
 
   const showScene = webgl === true && booted;
+  /* Generated universes tune their own star budget; stock keeps the plain
+     viewport-derived number (byte-identical to the pre-workspace build). */
+  const starBudget = scene.ambient
+    ? Math.min(scene.ambient.starCount, starCount.current)
+    : starCount.current;
 
   return (
     <div className="bg-void fixed inset-0 isolate overflow-hidden">
@@ -237,8 +285,9 @@ export function UniverseExperience() {
           )}
         >
           <UniverseScene
+            key={scene.id}
             reduced={Boolean(reduce)}
-            starCount={starCount.current}
+            starCount={starBudget}
           />
         </div>
       )}

@@ -5,8 +5,8 @@ import { invalidate } from "@react-three/fiber";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 
 import { Button, Icon } from "@/components";
-import { PROJECTS } from "@/data";
 import { useAssistantOpen } from "@/hooks/use-assistant";
+import { useSceneProjects } from "@/hooks/use-scene-data";
 import { readTimelineDate, useTimeline } from "@/hooks/use-timeline";
 import { useUniverse } from "@/hooks/use-universe";
 import { cn } from "@/lib/utils";
@@ -104,9 +104,10 @@ export function UniverseTimeline() {
   const past = date < now;
   const fraction = timelineFraction(date, floor, now);
   const ticks = React.useMemo(() => timelineTicks(floor, now), [floor, now]);
+  const projects = useSceneProjects();
   const worlds = React.useMemo(
-    () => PROJECTS.filter((project) => date > createdAt(project)).length,
-    [date],
+    () => projects.filter((project) => date > createdAt(project)).length,
+    [projects, date],
   );
 
   const trackRef = React.useRef<HTMLDivElement>(null);
@@ -320,7 +321,7 @@ export function UniverseTimeline() {
                   {formatTimelineDate(date)}
                 </p>
                 <p className="text-ink-faint tracking-caps mt-1.5 font-mono text-[9px] leading-none">
-                  {worlds} / {PROJECTS.length} WORLDS
+                  {worlds} / {projects.length} WORLDS
                 </p>
               </div>
 
@@ -396,7 +397,7 @@ export function UniverseTimeline() {
                     any real track width the two closest births sit ~19px
                     apart, so 24px WCAG targets would overlap — the slider
                     itself owns navigation for pointer and keyboard alike. */}
-                {PROJECTS.map((project) => {
+                {projects.map((project) => {
                   const born = createdAt(project);
                   return (
                     <span
