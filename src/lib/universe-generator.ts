@@ -915,6 +915,87 @@ export function simulateRepo(repo: string, seedKey: string): RepoSimulation {
   };
 }
 
+export interface RepoFeedItem {
+  /** Commit hash (7 chars). */
+  sha: string;
+  message: string;
+  author: string;
+  /** Repo short name (last path segment). */
+  repo: string;
+  /** Committed-at timestamp (ms). */
+  at: number;
+}
+
+/** One universe-wide GitHub pulse aggregated across every world's repo. */
+export interface RepoFeed {
+  /** How many worlds carry a repo. */
+  repos: number;
+  /** Average CI pass rate across repos (passing at the 85% bar). */
+  ci: { passing: boolean; passRate: number };
+  prsOpen: number;
+  prsMerged: number;
+  issuesOpen: number;
+  /** Distinct branch names across every repo. */
+  branches: number;
+  /** Freshest commits across the whole universe, newest first. */
+  activity: RepoFeedItem[];
+}
+
+/**
+ * aggregateRepoFeed — the HUD's universe-wide GitHub card in one call.
+ * Runs the same deterministic simulations the dossier's GitHub tab uses
+ * (offline, no network), then folds commits / PRs / issues / CI across
+ * every world's repo. Scene-level repo overrides are already merged into
+ * `project.links.repo`, so custom repos count here too.
+ *
+ * @example
+ * aggregateRepoFeed(projects);
+ * // → { repos: 5, ci: { passing: true, passRate: 94 }, …, activity: […] }
+ */
+export function aggregateRepoFeed(projects: readonly Project[]): RepoFeed {
+  let prsOpen = 0;
+  let prsMerged = 0;
+  let issuesOpen = 0;
+  let passSum = 0;
+  const branchNames = new Set<string>();
+  const activity: RepoFeedItem[] = [];
+
+  for (const project of projects) {
+    const sim = simulateRepo(project.links.repo, project.id);
+    passSum += sim.ci.passRate;
+    for (const name of sim.branches) branchNames.add(name);
+    for (const pr of sim.pullRequests) {
+      if (pr.state === "open") prsOpen += 1;
+      else if (pr.state === "merged") prsMerged += 1;
+    }
+    for (const issue of sim.issues) {
+      if (issue.state === "open") issuesOpen += 1;
+    }
+    const short = sim.repo.split("/").pop() ?? sim.repo;
+    for (const commit of sim.commits.slice(0, 2)) {
+      activity.push({
+        sha: commit.sha,
+        message: commit.message,
+        author: commit.author,
+        repo: short,
+        at: commit.at,
+      });
+    }
+  }
+
+  activity.sort((a, b) => b.at - a.at);
+  const passRate = Math.round(passSum / Math.max(1, projects.length));
+  return {
+    repos: projects.length,
+    ci: { passing: passRate >= 85, passRate },
+    prsOpen,
+    prsMerged,
+    issuesOpen,
+    branches: branchNames.size,
+    activity: activity.slice(0, 3),
+  };
+}
+
 /* ── AI insights (deterministic heuristics over generated data) ───────────── */
 
 export interface PlanetInsight {

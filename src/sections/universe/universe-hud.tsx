@@ -7,7 +7,8 @@ import { motion, useReducedMotion } from "framer-motion";
 import { Badge, Button, GlassCard, Icon } from "@/components";
 import { useSceneData, useSceneProjects } from "@/hooks/use-scene-data";
 import { useUniverse } from "@/hooks/use-universe";
-import { cn } from "@/lib/utils";
+import { aggregateRepoFeed } from "@/lib/universe-generator";
+import { cn, relativeTime } from "@/lib/utils";
 
 import { CreateUniverse, CreateUniverseButton } from "./create-universe";
 import { InsightsDashboard } from "./insights-dashboard";
@@ -86,6 +87,9 @@ export function UniverseHud({
   const projects = useSceneProjects();
   const scene = useSceneData();
   const focusedProject = projects.find((project) => project.id === focusedId);
+  /* One GitHub pulse across every world's repo — memoised so the ticking
+     clock and open states never re-run the simulations. */
+  const repoFeed = React.useMemo(() => aggregateRepoFeed(projects), [projects]);
   const [creating, setCreating] = React.useState(false);
   const [mapOpen, setMapOpen] = React.useState(false);
   const [insightsOpen, setInsightsOpen] = React.useState(false);
@@ -309,13 +313,17 @@ export function UniverseHud({
           </p>
         </div>
 
-        {/* right: signal log */}
+        {/* right: signal log + GitHub pulse */}
         <motion.aside
           {...rise(0.35)}
-          className="hidden w-60 shrink-0 lg:block"
+          className="hidden max-h-full min-h-0 w-60 shrink-0 flex-col gap-4 overflow-y-auto lg:flex"
           aria-label="System log"
         >
-          <GlassCard tone="strong" padding="md" className="pointer-events-auto">
+          <GlassCard
+            tone="strong"
+            padding="md"
+            className="pointer-events-auto shrink-0"
+          >
             <p className="eyebrow mb-4">Signal log</p>
             <ul className="text-micro space-y-2.5 font-mono">
               {LOG_LINES.map((line, index) => (
@@ -338,6 +346,73 @@ export function UniverseHud({
                     )}
                   />
                   <span className="leading-relaxed">{line}</span>
+                </li>
+              ))}
+            </ul>
+          </GlassCard>
+
+          {/* GitHub pulse — commits / PRs / issues / CI across every repo */}
+          <GlassCard
+            tone="strong"
+            padding="md"
+            className="pointer-events-auto shrink-0"
+          >
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <p className="eyebrow mb-0 flex items-center gap-1.5">
+                <Icon name="github" size="xs" />
+                GitHub
+              </p>
+              <span className="text-ink-faint text-micro font-mono tabular-nums">
+                {repoFeed.repos} repos
+              </span>
+            </div>
+            <Badge
+              variant={repoFeed.ci.passing ? "success" : "danger"}
+              dot
+              pulse={!reduce}
+            >
+              CI {repoFeed.ci.passRate}%
+            </Badge>
+            <dl className="text-micro mt-3 space-y-1.5 font-mono">
+              <div className="flex items-baseline justify-between gap-3">
+                <dt className="text-ink-muted">Pull requests</dt>
+                <dd className="text-ink tabular-nums">
+                  {repoFeed.prsOpen} open · {repoFeed.prsMerged} merged
+                </dd>
+              </div>
+              <div className="flex items-baseline justify-between gap-3">
+                <dt className="text-ink-muted">Issues</dt>
+                <dd className="text-ink tabular-nums">
+                  {repoFeed.issuesOpen} open
+                </dd>
+              </div>
+              <div className="flex items-baseline justify-between gap-3">
+                <dt className="text-ink-muted">Branches</dt>
+                <dd className="text-ink tabular-nums">
+                  {repoFeed.branches} tracked
+                </dd>
+              </div>
+            </dl>
+            <p className="text-ink-faint text-micro tracking-caps mt-4 mb-2 font-mono">
+              Fresh commits
+            </p>
+            <ul className="space-y-2.5">
+              {repoFeed.activity.map((item) => (
+                <li
+                  key={`${item.repo}-${item.sha}-${item.at}`}
+                  title={`${item.repo} — ${item.author}: ${item.message}`}
+                >
+                  <div className="flex items-baseline justify-between gap-2">
+                    <span className="text-aura-violet-soft font-mono">
+                      {item.sha}
+                    </span>
+                    <span className="text-ink-faint shrink-0 font-mono">
+                      {relativeTime(item.at)}
+                    </span>
+                  </div>
+                  <p className="text-ink-muted truncate text-xs leading-relaxed">
+                    {item.message}
+                  </p>
                 </li>
               ))}
             </ul>
