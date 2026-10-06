@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { motion, useReducedMotion } from "framer-motion";
 
 import { Badge, Button, GlassCard, Icon } from "@/components";
@@ -138,6 +139,18 @@ export function UniverseHud({
         </div>
 
         <div className="flex items-center gap-2">
+          <Button
+            variant="glass"
+            size="sm"
+            aria-label="Open Universe Manager"
+            className="pointer-events-auto"
+            asChild
+          >
+            <Link href="/universes" className="inline-flex items-center gap-2">
+              <Icon name="grid" size="sm" label="" />
+              <span className="hidden md:inline">Manager</span>
+            </Link>
+          </Button>
           <CreateUniverseButton onClick={() => setCreating(true)} />
           <Badge
             variant={ready ? "success" : "warning"}
