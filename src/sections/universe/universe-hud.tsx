@@ -10,6 +10,7 @@ import { useUniverse } from "@/hooks/use-universe";
 import { cn } from "@/lib/utils";
 
 import { CreateUniverse, CreateUniverseButton } from "./create-universe";
+import { InsightsDashboard } from "./insights-dashboard";
 import { UniverseMinimap } from "./universe-minimap";
 
 /* ────────────────────────────────────────────────────────────────────────── *
@@ -87,16 +88,36 @@ export function UniverseHud({
   const focusedProject = projects.find((project) => project.id === focusedId);
   const [creating, setCreating] = React.useState(false);
   const [mapOpen, setMapOpen] = React.useState(false);
+  const [insightsOpen, setInsightsOpen] = React.useState(false);
   const mapTriggerRef = React.useRef<HTMLButtonElement>(null);
+  const insightsTriggerRef = React.useRef<HTMLButtonElement>(null);
+
+  /* The two overlays are mutually exclusive — opening one closes the other —
+     so their topmost-layer Escape interception never overlaps and only one
+     can ever own the screen. */
+  const toggleMap = React.useCallback(() => {
+    setInsightsOpen(false);
+    setMapOpen((current) => !current);
+  }, []);
+  const toggleInsights = React.useCallback(() => {
+    setMapOpen(false);
+    setInsightsOpen((current) => !current);
+  }, []);
 
   /* The command palette (and anything else on the page) flips the galaxy
      map with one custom event — the HUD owns the open state so the trigger
      can report `aria-expanded`. */
   React.useEffect(() => {
-    const onToggle = () => setMapOpen((current) => !current);
-    window.addEventListener("astra:map-toggle", onToggle);
-    return () => window.removeEventListener("astra:map-toggle", onToggle);
-  }, []);
+    window.addEventListener("astra:map-toggle", toggleMap);
+    return () => window.removeEventListener("astra:map-toggle", toggleMap);
+  }, [toggleMap]);
+
+  /* …and the insights dashboard the same way (`astra:insights-toggle`). */
+  React.useEffect(() => {
+    window.addEventListener("astra:insights-toggle", toggleInsights);
+    return () =>
+      window.removeEventListener("astra:insights-toggle", toggleInsights);
+  }, [toggleInsights]);
 
   /* …and asks for the creation flow the same way (palette → "Create a new
      universe"). The manager listens for the identical event on its route. */
@@ -169,9 +190,22 @@ export function UniverseHud({
             aria-keyshortcuts="M"
             className="pointer-events-auto"
             iconLeft={<Icon name="map" size="sm" label="" />}
-            onClick={() => setMapOpen((current) => !current)}
+            onClick={toggleMap}
           >
             <span className="hidden md:inline">Map</span>
+          </Button>
+          <Button
+            ref={insightsTriggerRef}
+            variant="glass"
+            size="sm"
+            aria-label="Open AI insights"
+            aria-expanded={insightsOpen}
+            aria-haspopup="dialog"
+            className="pointer-events-auto"
+            iconLeft={<Icon name="zap" size="sm" label="" />}
+            onClick={toggleInsights}
+          >
+            <span className="hidden md:inline">Insights</span>
           </Button>
           <Button
             variant="glass"
@@ -207,6 +241,11 @@ export function UniverseHud({
         open={mapOpen}
         onOpenChange={setMapOpen}
         returnFocusRef={mapTriggerRef}
+      />
+      <InsightsDashboard
+        open={insightsOpen}
+        onOpenChange={setInsightsOpen}
+        returnFocusRef={insightsTriggerRef}
       />
 
       {/* ── side rails ───────────────────────────────────────────────── */}

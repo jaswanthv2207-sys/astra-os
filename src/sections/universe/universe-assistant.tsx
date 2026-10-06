@@ -11,6 +11,7 @@ import {
   type AssistantAction,
   type AssistantMessage,
 } from "@/hooks/use-assistant";
+import { useUniverseBriefing } from "@/hooks/use-insights";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { useSearch } from "@/hooks/use-search";
 import { useUniverse } from "@/hooks/use-universe";
@@ -28,7 +29,9 @@ import { respond, suggestReplies } from "./assistant-reply";
  * runs on the local reply engine (`assistant-reply.ts`): the same parser
  * behind the floating search, so "Show all AI projects" glows the matches,
  * frames them and — after a readable beat — collapses the panel so the
- * camera reveal owns the stage, exactly like a search commit.
+ * camera reveal owns the stage, exactly like a search commit. A live
+ * briefing (health, tasks, deadlines) rides along, so universe-level asks
+ * like "How's my universe doing?" answer with real numbers, on-device.
  *
  * Placement: the dossier owns the right edge on desktop, so the anchor
  * column slides left of it while a world is focused; on mobile the dossier
@@ -493,11 +496,15 @@ export function UniverseAssistant() {
   const [thinking, setThinking] = React.useState(false);
 
   const projects = useSceneProjects();
+  const briefing = useUniverseBriefing();
   const context = React.useMemo(
     () => projects.find((project) => project.id === focusedId) ?? null,
     [projects, focusedId],
   );
-  const suggestions = React.useMemo(() => suggestReplies(context), [context]);
+  const suggestions = React.useMemo(
+    () => suggestReplies(context, briefing),
+    [context, briefing],
+  );
 
   /* ── Placement: share the right edge with the dossier ────────────────── */
   const dossierOpen = Boolean(focusedId);
@@ -549,7 +556,7 @@ export function UniverseAssistant() {
       push({ id: nextId(), role: "user", text });
       setThinking(true);
 
-      const reply = respond(text, { focused: context });
+      const reply = respond(text, { focused: context, briefing });
       const thinkMs = reduce ? 240 : 520 + Math.min(460, reply.text.length * 4);
       const replyTimer = window.setTimeout(() => {
         setThinking(false);
@@ -571,7 +578,7 @@ export function UniverseAssistant() {
       }, thinkMs);
       timers.current.push(replyTimer);
     },
-    [context, execute, nextId, push, reduce, setOpen, thinking],
+    [briefing, context, execute, nextId, push, reduce, setOpen, thinking],
   );
 
   /** Action chips run immediately and fold the panel (same stage rules). */

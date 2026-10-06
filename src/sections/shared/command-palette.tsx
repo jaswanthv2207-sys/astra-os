@@ -157,10 +157,12 @@ export function CommandPalette() {
         /* SearchBar yields: no bubble-phase handler ever sees the chord. */
         event.stopImmediatePropagation();
         if (!openRef.current) {
-          /* A modal dialog (Radix focus guard) owns the screen — let it. */
+          /* A modal dialog (Radix focus guard) owns the screen — let it.
+             The dashboard is hand-rolled with no focus guards of its own,
+             so ⌘K deliberately opens over it (`:not([data-insights])`). */
           if (
             document.querySelector(
-              '[role="dialog"][aria-modal="true"]:not([data-minimap]):not([data-command-palette])',
+              '[role="dialog"][aria-modal="true"]:not([data-minimap]):not([data-insights]):not([data-command-palette])',
             )
           ) {
             return;
@@ -214,6 +216,14 @@ export function CommandPalette() {
           label: "Toggle galaxy map",
           hint: "M",
           run: () => window.dispatchEvent(new Event("astra:map-toggle")),
+        },
+        {
+          id: "open-insights",
+          group: "actions",
+          icon: "zap",
+          label: "Open AI insights",
+          hint: "forecast",
+          run: () => window.dispatchEvent(new Event("astra:insights-toggle")),
         },
         {
           id: "ask-astra",

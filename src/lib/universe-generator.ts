@@ -1010,9 +1010,8 @@ export function computePlanetInsight(
 
 export function computeInsights(
   record: UniverseRecord,
-  scene: GeneratedScene,
+  scene: { projects: readonly Project[] },
 ): UniverseInsights {
-  const rng = rngFrom(`${record.seed}:insights`, 11);
   const planets: PlanetInsight[] = scene.projects.map((project) =>
     computePlanetInsight(
       project,
@@ -1021,6 +1020,25 @@ export function computeInsights(
       String(record.seed),
     ),
   );
+  return aggregateInsights(planets, String(record.seed));
+}
+
+/**
+ * aggregateInsights — the universe-wide rollup over any set of per-planet
+ * forecasts. `computeInsights` uses it for generated records; the stock
+ * scene (no record) builds its planets with `computePlanetInsight` +
+ * `STOCK_SEED` and aggregates them here, so both paths share one set of
+ * numbers. The seed keys the productivity jitter — same key, same output.
+ *
+ * @example
+ * aggregateInsights(planets, String(STOCK_SEED));
+ * // → { health, riskScore, …, actions, planets }
+ */
+export function aggregateInsights(
+  planets: PlanetInsight[],
+  seedKey: string,
+): UniverseInsights {
+  const rng = rngFrom(`${seedKey}:insights`, 11);
 
   const health = Math.round(
     planets.reduce((s, p) => s + p.health, 0) / Math.max(1, planets.length),

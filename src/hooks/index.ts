@@ -18,6 +18,7 @@ export {
   type UseAssistantResult,
 } from "./use-assistant";
 export { useMediaQuery } from "./use-media-query";
+export { useUniverseBriefing, type UniverseBriefing } from "./use-insights";
 export { useSceneData, useSceneProjects } from "./use-scene-data";
 export {
   useUniverses,

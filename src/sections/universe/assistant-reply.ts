@@ -1,23 +1,29 @@
 import { type Project } from "@/data";
 import { sceneProjects } from "@/data/scene-data";
+import type { UniverseBriefing } from "@/hooks/use-insights";
 import type { IconName } from "@/lib/icons";
+import type { PlanetInsight } from "@/lib/universe-generator";
 
 import { parseQuery } from "./search-query";
+import { formatTimelineDate } from "./timeline";
 
 /* ────────────────────────────────────────────────────────────────────────── *
  * assistant-reply — the local "understanding" layer behind Astra.
  *
  * Conversational requests are matched in priority order — greeting/help
  * small-talk, then what a *specific* world is built with, linked to and
- * about — before falling back to the search parser (`search-query.ts`), so
- * "What powers Quasar ML?", "Show worlds linked to it" and
- * "Show all AI projects" all resolve without a network round-trip. Pure
- * functions only: the UI owns state and executes the returned camera
- * moves, this owns meaning.
+ * about, then whole-universe status read from the live briefing — before
+ * falling back to the search parser (`search-query.ts`), so
+ * "What powers Quasar ML?", "Show worlds linked to it",
+ * "How's my universe doing?" and "Show all AI projects" all resolve without
+ * a network round-trip. Pure functions only: the UI owns state and executes
+ * the returned camera moves, this owns meaning.
  *
  * The action shape mirrors (structurally) `AssistantAction` in
  * `stores/assistant-store.ts` — same decoupling as the search store: the
- * engine never imports stores, the component pushes replies verbatim.
+ * engine never imports stores, the component pushes replies verbatim (the
+ * briefing arrives as a plain data snapshot — a type-only import from the
+ * hooks layer, no runtime edge).
  * ────────────────────────────────────────────────────────────────────────── */
 
 /** A camera move Astra can perform (chip or immediate `run`). */
@@ -65,6 +71,19 @@ const DIGEST_RE =
   /\b(summari[sz]e|summary|overview|describe|explain|tell me about|what(?:'s|s| is| are| was))\b/i;
 /** Pronouns that let a bare verb fall back to the focused world. */
 const CONTEXT_RE = /\b(it|it's|its|this|this one|current|selected|focused)\b/i;
+/** A *specific* world's status — checked before digest so "What's the
+ *  status of Quasar ML" answers the numbers, not the summary. */
+const WORLD_STATUS_RE =
+  /\b(status|health|how('s| is| are) .{0,40}(doing|going|looking)|forecast|predict(?:ion|ions)?|due|deadline|risk\w*|bottleneck\w*|attention)\b/i;
+
+/* Universe-scoped questions — answered from the live briefing whenever no
+ * specific world is in play, so they never fall through to the text scorer
+ * as "couldn't tie … to a world". */
+const TASKS_RE = /\b(task\w*|todo\w*|deadline\w*|workload|due)\b/i;
+const INSIGHTS_RE =
+  /\b(attention\w*|insight\w*|bottleneck\w*|recommend\w*|advice|priorit\w*|what needs|what should i|risk\w*)\b/i;
+const UNIVERSE_RE =
+  /\b((my|this|the|our|whole|entire) universe|universe (status|health|report|summary)|how('s| is| are) (it|everything|things|this)|everything (going|doing)|overall (status|health|picture)|forecast\w*|predict(?:ion|ions)?|status( report)?|health( check)?|how are we doing)\b/i;
 
 /* ── Helpers ─────────────────────────────────────────────────────────────── */
 
@@ -130,6 +149,7 @@ const HELP_REPLY = [
   "• Filter by tag — “Show all AI projects”",
   "• Jump to the freshest — “Open my latest hackathon project”",
   "• Explain what you're viewing — “Summarise it”",
+  "• Universe status — “How's my universe doing?”, “What's due?”",
   "I'll fly the camera for you as we go.",
 ].join("\n");
 
@@ -181,11 +201,117 @@ function digestReply(target: Project): AssistantReply {
   };
 }
 
+/* ── Universe-level reply bodies (briefing-backed) ──────────────────────── */
+
+/** Chip: frame every world in the active scene at once. */
+function frameAllAction(): AssistantReplyAction {
+  return {
+    id: "frame-all-worlds",
+    label: "Frame all worlds",
+    icon: "grid",
+    kind: "frame",
+    ids: sceneProjects().map((project) => project.id),
+  };
+}
+
+/** Chip: fly to the riskiest world (null when the briefing has none). */
+function riskiestAction(
+  planets: readonly PlanetInsight[],
+): AssistantReplyAction | null {
+  const riskiest = [...planets].sort((a, b) => b.risk - a.risk)[0];
+  if (!riskiest) return null;
+  return {
+    id: `fly-risk-${riskiest.planetId}`,
+    label: `Check ${riskiest.name}`,
+    icon: "target",
+    kind: "focus",
+    ids: [riskiest.planetId],
+  };
+}
+
+/** Headline numbers: health, risk, forecast, productivity, task totals. */
+function universeStatusReply(briefing: UniverseBriefing): AssistantReply {
+  const { name, insights, worldCount, openTasks, doneTasks } = briefing;
+  const riskiest = riskiestAction(insights.planets);
+  return {
+    text: [
+      `${name} — ${worldCount} worlds.`,
+      `Health ${insights.health} · risk ${insights.riskScore} · productivity ${insights.productivity}.`,
+      `Forecast: ${insights.completionPrediction}% predicted completion.`,
+      `${openTasks} open tasks · ${doneTasks} done.`,
+      insights.bottleneck
+        ? `Watch: ${insights.bottleneck}.`
+        : "No bottleneck on the board.",
+    ].join("\n"),
+    actions: [frameAllAction(), ...(riskiest ? [riskiest] : [])],
+  };
+}
+
+/** Attention ask: the recommended actions plus the worlds carrying risk. */
+function insightsReply(briefing: UniverseBriefing): AssistantReply {
+  const { insights } = briefing;
+  const ranked = [...insights.planets].sort((a, b) => b.risk - a.risk);
+  const atRisk = ranked.filter((planet) => planet.risk >= 45).slice(0, 3);
+  const watch = (atRisk.length > 0 ? atRisk : ranked.slice(0, 2)).map(
+    (planet) => `${planet.name} (${planet.risk})`,
+  );
+  const riskiest = riskiestAction(insights.planets);
+  return {
+    text: [
+      "Where to look first:",
+      ...insights.actions.map((action) => `• ${action}`),
+      ...(watch.length > 0 ? [`Riskiest worlds: ${watch.join(", ")}.`] : []),
+    ].join("\n"),
+    actions: [frameAllAction(), ...(riskiest ? [riskiest] : [])],
+  };
+}
+
+/** Task/deadline ask: totals across the universe plus dated milestones. */
+function tasksReply(briefing: UniverseBriefing): AssistantReply {
+  const { insights, worldCount, openTasks, doneTasks } = briefing;
+  const deadlines = insights.deadlines.map(
+    (deadline) => `• ${deadline.name} — ${formatTimelineDate(deadline.dueAt)}`,
+  );
+  const riskiest = riskiestAction(insights.planets);
+  return {
+    text: [
+      `${openTasks} open tasks across ${worldCount} worlds · ${doneTasks} done.`,
+      deadlines.length > 0
+        ? `Next deadlines:\n${deadlines.join("\n")}`
+        : "No dated milestones on the board — everything's open-ended.",
+    ].join("\n"),
+    actions: [frameAllAction(), ...(riskiest ? [riskiest] : [])],
+  };
+}
+
+/** One world's status — its slice of the briefing (health/risk/forecast). */
+function projectStatusReply(
+  target: Project,
+  briefing: UniverseBriefing,
+): AssistantReply {
+  const insight = briefing.insights.planets.find(
+    (planet) => planet.planetId === target.id,
+  );
+  if (!insight) return digestReply(target);
+  const due =
+    insight.dueAt != null ? ` · due ${formatTimelineDate(insight.dueAt)}` : "";
+  const lines = [
+    `${target.name} — health ${insight.health} · risk ${insight.risk} · forecast ${insight.completionPrediction}%.`,
+    `${insight.progress}% complete · ${insight.workload} task${insight.workload === 1 ? "" : "s"} tracked${due}.`,
+  ];
+  if (insight.bottlenecks.length > 0) {
+    lines.push(`Watch: ${insight.bottlenecks.join(", ")}.`);
+  }
+  return { text: lines.join("\n"), actions: [flyAction(target)] };
+}
+
 /* ── Engine ──────────────────────────────────────────────────────────────── */
 
 export interface RespondContext {
   /** The world the camera is holding, if any — the conversation's context. */
   focused: Project | null;
+  /** Live universe rollup — status/attention/deadline asks read from it. */
+  briefing?: UniverseBriefing | null;
 }
 
 /**
@@ -213,10 +339,23 @@ export function respond(raw: string, context: RespondContext): AssistantReply {
   // world under the camera ("summarise it").
   const target =
     matchProjectName(text) ?? (CONTEXT_RE.test(text) ? context.focused : null);
+  const briefing = context.briefing ?? null;
   if (target) {
     if (STACK_RE.test(text)) return stackReply(target);
     if (RELATED_RE.test(text)) return relatedReply(target);
+    if (briefing && WORLD_STATUS_RE.test(text)) {
+      return projectStatusReply(target, briefing);
+    }
     if (DIGEST_RE.test(text)) return digestReply(target);
+  }
+
+  // Universe-scoped asks — answered from the live briefing before the text
+  // scorer, so status/attention/deadline questions never degrade into a
+  // "couldn't tie … to a world" fallback.
+  if (!target && briefing) {
+    if (TASKS_RE.test(text)) return tasksReply(briefing);
+    if (INSIGHTS_RE.test(text)) return insightsReply(briefing);
+    if (UNIVERSE_RE.test(text)) return universeStatusReply(briefing);
   }
 
   // Universe queries — the same parser the floating search uses, so both
@@ -263,15 +402,23 @@ export function respond(raw: string, context: RespondContext): AssistantReply {
 
 /**
  * suggestReplies — the chips under the composer: contextual when a world is
- * focused, discovery-oriented otherwise.
+ * focused, discovery-oriented otherwise. With a briefing in hand the
+ * universe-level asks join the row (the container scrolls, so 5–6 fit).
  */
-export function suggestReplies(focused: Project | null): string[] {
+export function suggestReplies(
+  focused: Project | null,
+  briefing?: UniverseBriefing | null,
+): string[] {
+  const universe = briefing
+    ? ["How's my universe doing?", "What's due soon?"]
+    : [];
   if (focused) {
     return [
       `Summarise ${focused.name}`,
       `What powers ${focused.name}?`,
       `Show worlds linked to ${focused.name}`,
       "Show all AI projects",
+      ...universe,
     ];
   }
   return [
@@ -279,5 +426,6 @@ export function suggestReplies(focused: Project | null): string[] {
     "Show all AI projects",
     "Find projects using Fast API",
     "Open my latest hackathon project",
+    ...universe,
   ];
 }
