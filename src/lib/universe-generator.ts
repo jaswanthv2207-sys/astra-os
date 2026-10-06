@@ -216,7 +216,15 @@ const TASK_POOL = [
   "Close the docs coverage gap",
 ];
 
-const DOC_KINDS = ["RFC", "Runbook", "Spec", "ADR", "Dashboard", "Guide"];
+/** Document kinds offered when adding a doc by hand (dossier + generator). */
+export const DOC_KINDS = [
+  "RFC",
+  "Runbook",
+  "Spec",
+  "ADR",
+  "Dashboard",
+  "Guide",
+];
 const DOC_PREFIX = [
   "ingest",
   "gateway",
@@ -932,65 +940,87 @@ export interface UniverseInsights {
   planets: PlanetInsight[];
 }
 
+/**
+ * One planet's forecast — health / risk / predicted completion plus its
+ * bottlenecks. Works for any `Project` (the stock graph and generated
+ * universes alike): the dossier's AI Insights tab calls it directly and
+ * `computeInsights` rolls the same maths up universe-wide.
+ *
+ * `seedKey` is the universe seed (or the stock scene's) so the numbers are
+ * deterministic per world — no network, no flicker between visits.
+ */
+export function computePlanetInsight(
+  project: Project,
+  meta: PlanetMeta | undefined,
+  tasks: PlanetTask[],
+  seedKey: string,
+): PlanetInsight {
+  const rng = rngFrom(`${seedKey}:${project.id}:insight`, 11);
+  const now = Date.now();
+  const done = tasks.filter((t) => t.done).length;
+  const workload = tasks.length;
+  const completion = meta?.completion ?? project.progress;
+  const overdue = meta?.dueAt != null && meta.dueAt < now && completion < 90;
+  const health = Math.round(
+    Math.max(
+      12,
+      Math.min(
+        98,
+        completion * 0.6 +
+          (workload ? (done / workload) * 40 : 25) +
+          float(rng, -8, 8) -
+          (overdue ? 22 : 0),
+      ),
+    ),
+  );
+  const risk = Math.round(
+    Math.max(
+      4,
+      Math.min(
+        96,
+        (100 - completion) * 0.55 +
+          (overdue ? 26 : 0) +
+          float(rng, -6, 10) +
+          (workload > 8 ? 8 : 0),
+      ),
+    ),
+  );
+  const bottlenecks: string[] = [];
+  if (overdue) bottlenecks.push("Overdue milestone");
+  if (workload > 8) bottlenecks.push("High task load");
+  if (completion < 35) bottlenecks.push("Early stage");
+  if (project.related.length === 0) bottlenecks.push("No linked worlds");
+  if (bottlenecks.length === 0 && chance(rng, 0.35)) {
+    bottlenecks.push(pick(rng, ["Flaky CI", "Docs lag", "Review queue"]));
+  }
+  return {
+    planetId: project.id,
+    name: project.name,
+    progress: completion,
+    health,
+    completionPrediction: Math.round(
+      Math.min(99, completion + (100 - completion) * float(rng, 0.25, 0.6)),
+    ),
+    risk,
+    bottlenecks,
+    workload,
+    dueAt: meta?.dueAt ?? null,
+  };
+}
+
 export function computeInsights(
   record: UniverseRecord,
   scene: GeneratedScene,
 ): UniverseInsights {
-  const now = Date.now();
   const rng = rngFrom(`${record.seed}:insights`, 11);
-  const planets: PlanetInsight[] = scene.projects.map((project) => {
-    const meta = record.planetMeta[project.id];
-    const tasks = record.planetTasks[project.id] ?? [];
-    const done = tasks.filter((t) => t.done).length;
-    const workload = tasks.length;
-    const completion = meta?.completion ?? project.progress;
-    const overdue = meta?.dueAt != null && meta.dueAt < now && completion < 90;
-    const health = Math.round(
-      Math.max(
-        12,
-        Math.min(
-          98,
-          completion * 0.6 +
-            (workload ? (done / workload) * 40 : 25) +
-            float(rng, -8, 8) -
-            (overdue ? 22 : 0),
-        ),
-      ),
-    );
-    const risk = Math.round(
-      Math.max(
-        4,
-        Math.min(
-          96,
-          (100 - completion) * 0.55 +
-            (overdue ? 26 : 0) +
-            float(rng, -6, 10) +
-            (workload > 8 ? 8 : 0),
-        ),
-      ),
-    );
-    const bottlenecks: string[] = [];
-    if (overdue) bottlenecks.push("Overdue milestone");
-    if (workload > 8) bottlenecks.push("High task load");
-    if (completion < 35) bottlenecks.push("Early stage");
-    if (project.related.length === 0) bottlenecks.push("No linked worlds");
-    if (bottlenecks.length === 0 && chance(rng, 0.35)) {
-      bottlenecks.push(pick(rng, ["Flaky CI", "Docs lag", "Review queue"]));
-    }
-    return {
-      planetId: project.id,
-      name: project.name,
-      progress: completion,
-      health,
-      completionPrediction: Math.round(
-        Math.min(99, completion + (100 - completion) * float(rng, 0.25, 0.6)),
-      ),
-      risk,
-      bottlenecks,
-      workload,
-      dueAt: meta?.dueAt ?? null,
-    };
-  });
+  const planets: PlanetInsight[] = scene.projects.map((project) =>
+    computePlanetInsight(
+      project,
+      record.planetMeta[project.id],
+      record.planetTasks[project.id] ?? [],
+      String(record.seed),
+    ),
+  );
 
   const health = Math.round(
     planets.reduce((s, p) => s + p.health, 0) / Math.max(1, planets.length),

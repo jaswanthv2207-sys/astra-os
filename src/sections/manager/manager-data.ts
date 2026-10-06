@@ -1,4 +1,5 @@
 import { buildUniverseScene } from "@/data/scene-data";
+import { relativeTime } from "@/lib/utils";
 import type { UniverseRecord } from "@/types/workspace";
 
 /* ────────────────────────────────────────────────────────────────────────── *
@@ -49,21 +50,9 @@ export function storageFraction(records: readonly UniverseRecord[]): number {
   return Math.min(1, used / STORAGE_BUDGET);
 }
 
-/** "just now" · "4m ago" · "3h ago" · "2d ago" · "12 Mar". */
-export function relativeTime(at: number, now = Date.now()): string {
-  const diff = Math.max(0, now - at);
-  const minute = 60_000;
-  const hour = 60 * minute;
-  const day = 24 * hour;
-  if (diff < minute) return "just now";
-  if (diff < hour) return `${Math.floor(diff / minute)}m ago`;
-  if (diff < day) return `${Math.floor(diff / hour)}h ago`;
-  if (diff < 7 * day) return `${Math.floor(diff / day)}d ago`;
-  return new Date(at).toLocaleDateString(undefined, {
-    day: "numeric",
-    month: "short",
-  });
-}
+/* `relativeTime` moved to `lib/utils` (the dossier's Activity tab needs it
+   too) — re-exported here so existing manager imports stay put. */
+export { relativeTime };
 
 /** Days until a deadline — negative = overdue. Null when unset. */
 export function daysUntil(

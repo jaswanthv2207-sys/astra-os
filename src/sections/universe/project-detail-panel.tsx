@@ -1,16 +1,28 @@
 "use client";
 
 import * as React from "react";
-import { AnimatePresence, motion, type Variants } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 
 import { Badge, Button, Icon } from "@/components";
 import { type Project, type ProjectStatus } from "@/data";
 import { useSceneProjects } from "@/hooks/use-scene-data";
 import { useTimeline } from "@/hooks/use-timeline";
 import { useUniverse } from "@/hooks/use-universe";
-import type { IconName } from "@/lib/icons";
+import { useDossierWorkspace } from "@/hooks/use-workspace";
 import { cn } from "@/lib/utils";
 
+import { EASE, Section, listVariants } from "./dossier-section";
+import {
+  ActivityTabBody,
+  AnalyticsTabBody,
+  DossierTabBar,
+  DocumentsTabBody,
+  GithubTabBody,
+  InsightsTabBody,
+  NotesTabBody,
+  TasksTabBody,
+  type DossierTabId,
+} from "./dossier-tabs";
 import { formatDate, STATUS_META } from "./scene/planet-card";
 import { formatTimelineDate, progressAt } from "./timeline";
 
@@ -24,9 +36,14 @@ import { formatTimelineDate, progressAt } from "./timeline";
  * the universe. It replaces a traditional modal: non-blocking, dismissible
  * with Escape, and the world keeps orbiting (and stays clickable) behind it.
  *
- * Sections: overview + completion, AI summary, data statistics,
- * technologies, screenshot gallery (procedural art), architecture layers,
- * ship timeline, related worlds (fly there directly) and quick actions.
+ * The panel is tabbed (ARIA tabs pattern, strip under the header): the
+ * default Overview tab is the original dossier verbatim — overview +
+ * completion, AI summary, data statistics, technologies, screenshot gallery
+ * (procedural art), architecture layers, ship timeline, related worlds
+ * (fly there directly) and quick actions. The other nine tabs (Notes, Tasks,
+ * Documents, Screenshots, GitHub, Timeline, AI Insights, Activity,
+ * Analytics) live in dossier-tabs.tsx; Screenshots and Timeline reuse their
+ * Overview bodies so the default view never changes shape.
  * ────────────────────────────────────────────────────────────────────────── */
 
 const BADGE_VARIANT: Record<ProjectStatus, "success" | "warning" | "default"> =
@@ -55,20 +72,6 @@ const MILESTONE_META: Record<
     dot: "border-2 border-line-strong bg-transparent",
     text: "text-ink-ghost",
   },
-};
-
-/** Shared entrance easing — same family as the HUD's glass transitions. */
-const EASE = [0.16, 1, 0.3, 1] as const;
-
-/** Staggered reveal for the panel's sections. */
-const listVariants: Variants = {
-  hidden: {},
-  show: { transition: { staggerChildren: 0.05, delayChildren: 0.12 } },
-};
-
-const itemVariants: Variants = {
-  hidden: { opacity: 0, y: 12 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: EASE } },
 };
 
 /* ── procedural screenshot art ──────────────────────────────────────────── *
@@ -195,31 +198,6 @@ function ShotArt({ project, variant }: { project: Project; variant: number }) {
   );
 }
 
-function Section({
-  label,
-  icon,
-  children,
-}: {
-  label: string;
-  icon: IconName;
-  children: React.ReactNode;
-}) {
-  return (
-    <motion.section variants={itemVariants}>
-      <p
-        className="eyebrow mb-2.5 flex items-center gap-1.5"
-        /* Inline so it beats `.eyebrow`'s tertiary ink — section labels must
-           stay readable over whatever passes behind the glass. */
-        style={{ color: "var(--ink-secondary)" }}
-      >
-        <Icon name={icon} size="xs" />
-        {label}
-      </p>
-      {children}
-    </motion.section>
-  );
-}
-
 /**
  * Completion as it stands at the *viewed* timeline date — parked in the
  * past, the row reports what had been achieved by then (and the bar eases
@@ -289,9 +267,19 @@ export function ProjectDetailPanel({
 function Dossier({ project, reduce }: { project: Project; reduce: boolean }) {
   const { focus, release } = useUniverse();
   const projects = useSceneProjects();
+  const work = useDossierWorkspace(project.id);
   const panelRef = React.useRef<HTMLElement>(null);
+  const bodyRef = React.useRef<HTMLDivElement>(null);
   const [copied, setCopied] = React.useState(false);
   const copyTimer = React.useRef<number | undefined>(undefined);
+
+  /* Tabs reset to Overview whenever a different world opens (this component
+     is keyed by world), and every switch starts the body at the top — a
+     deep-scrolled Overview shouldn't leave Notes half-way down. */
+  const [tab, setTab] = React.useState<DossierTabId>("overview");
+  React.useEffect(() => {
+    bodyRef.current?.scrollTo({ top: 0 });
+  }, [tab]);
 
   const status = STATUS_META[project.status];
   const { atmosphere } = project.planet;
@@ -329,6 +317,64 @@ function Dossier({ project, reduce }: { project: Project; reduce: boolean }) {
       /* Clipboard unavailable (permissions / insecure context) — no-op. */
     }
   }, [project.name, project.summary]);
+
+  /* The gallery and ship timeline render identically inside the default
+     Overview and on their own tabs — defined once, referenced twice, so the
+     Overview's markup never drifts from what those tabs show. */
+  const screenshotsSection = (
+    /* Screenshots */
+    <Section label="Screenshots" icon="palette">
+      <ul className="flex snap-x gap-3 overflow-x-auto pb-1">
+        {project.shots.map((shot, shotIndex) => (
+          <li key={shot.title} className="w-56 shrink-0 snap-start">
+            <figure className="border-line/70 overflow-hidden rounded-xl border bg-white/[0.02]">
+              <ShotArt project={project} variant={shotIndex} />
+              <figcaption className="border-line/60 border-t px-3 py-2">
+                <p className="text-ink text-xs font-medium">{shot.title}</p>
+                <p className="text-ink-muted mt-0.5 text-[10px] leading-snug">
+                  {shot.caption}
+                </p>
+              </figcaption>
+            </figure>
+          </li>
+        ))}
+      </ul>
+    </Section>
+  );
+
+  const timelineSection = (
+    /* Timeline */
+    <Section label="Timeline" icon="clock">
+      <ol>
+        {project.timeline.map((milestone, msIndex) => {
+          const meta = MILESTONE_META[milestone.status];
+          const last = msIndex === project.timeline.length - 1;
+          return (
+            <li key={milestone.label} className="flex gap-3">
+              <div className="flex flex-col items-center">
+                <span
+                  className={cn(
+                    "mt-1.5 size-2 shrink-0 rounded-full",
+                    meta.dot,
+                  )}
+                />
+                {!last && <span className="bg-line w-px flex-1" />}
+              </div>
+              <div className={cn("min-w-0 pb-4", last && "pb-0")}>
+                <p className="text-ink text-xs font-medium">
+                  {milestone.label}
+                </p>
+                <p className="text-ink-muted mt-0.5 font-mono text-[10px]">
+                  {formatDate(milestone.date)} ·{" "}
+                  <span className={meta.text}>{meta.label}</span>
+                </p>
+              </div>
+            </li>
+          );
+        })}
+      </ol>
+    </Section>
+  );
 
   return (
     <motion.aside
@@ -416,239 +462,221 @@ function Dossier({ project, reduce }: { project: Project; reduce: boolean }) {
         </div>
       </header>
 
+      {/* ── tab strip ──────────────────────────────────────────────────── */}
+      <DossierTabBar active={tab} onChange={setTab} />
+
       {/* ── body ───────────────────────────────────────────────────────── */}
       <div
-        className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-4"
+        ref={bodyRef}
+        role="tabpanel"
+        id="dossier-panel"
+        aria-labelledby={`dossier-tab-${tab}`}
+        tabIndex={0}
+        className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-4 outline-none"
         style={{ scrollbarWidth: "thin" }}
       >
         <motion.div
+          key={tab}
           variants={listVariants}
           initial={reduce ? false : "hidden"}
           animate="show"
           className="space-y-6"
         >
-          {/* Overview */}
-          <Section label="Overview" icon="box">
-            <p className="text-ink-muted text-sm leading-relaxed">
-              {project.overview}
-            </p>
-            <Completion project={project} reduce={reduce} />
-          </Section>
+          {tab === "overview" && (
+            <>
+              {/* Overview */}
+              <Section label="Overview" icon="box">
+                <p className="text-ink-muted text-sm leading-relaxed">
+                  {project.overview}
+                </p>
+                <Completion project={project} reduce={reduce} />
+              </Section>
 
-          {/* AI summary */}
-          <Section label="AI summary" icon="sparkles">
-            <div className="border-aura-violet/30 bg-aura-violet/10 rounded-xl border p-3.5">
-              <p className="text-ink text-sm leading-relaxed">
-                {project.summary}
-              </p>
-              <p className="text-ink-muted mt-2.5 font-mono text-[10px] tracking-wider uppercase">
-                Astra synthesis · {formatDate(project.updatedAt)}
-              </p>
-            </div>
-          </Section>
-
-          {/* Data statistics */}
-          <Section label="Data statistics" icon="activity">
-            <dl className="grid grid-cols-2 gap-2.5">
-              {project.stats.map((stat) => (
-                <div
-                  key={stat.label}
-                  className="border-line/70 rounded-xl border bg-white/[0.03] p-3"
-                >
-                  <dt className="text-ink-muted text-micro tracking-caps font-mono">
-                    {stat.label}
-                  </dt>
-                  <dd className="mt-1.5 flex items-baseline gap-1.5">
-                    <span className="text-ink font-mono text-lg leading-none tabular-nums">
-                      {stat.value}
-                    </span>
-                    {stat.delta && (
-                      <span
-                        className={cn(
-                          "font-mono text-[10px]",
-                          stat.delta.startsWith("+")
-                            ? "text-success"
-                            : "text-info",
-                        )}
-                      >
-                        {stat.delta}
-                      </span>
-                    )}
-                  </dd>
+              {/* AI summary */}
+              <Section label="AI summary" icon="sparkles">
+                <div className="border-aura-violet/30 bg-aura-violet/10 rounded-xl border p-3.5">
+                  <p className="text-ink text-sm leading-relaxed">
+                    {project.summary}
+                  </p>
+                  <p className="text-ink-muted mt-2.5 font-mono text-[10px] tracking-wider uppercase">
+                    Astra synthesis · {formatDate(project.updatedAt)}
+                  </p>
                 </div>
-              ))}
-            </dl>
-          </Section>
+              </Section>
 
-          {/* Technologies */}
-          <Section label="Technologies" icon="boxes">
-            <div className="flex flex-wrap gap-1.5">
-              {project.stack.map((tech) => (
-                <span
-                  key={tech}
-                  className="border-line/80 text-ink-muted rounded-full border bg-white/[0.04] px-2.5 py-1 font-mono text-[11px] tracking-wide"
-                >
-                  {tech}
-                </span>
-              ))}
-            </div>
-          </Section>
+              {/* Data statistics */}
+              <Section label="Data statistics" icon="activity">
+                <dl className="grid grid-cols-2 gap-2.5">
+                  {project.stats.map((stat) => (
+                    <div
+                      key={stat.label}
+                      className="border-line/70 rounded-xl border bg-white/[0.03] p-3"
+                    >
+                      <dt className="text-ink-muted text-micro tracking-caps font-mono">
+                        {stat.label}
+                      </dt>
+                      <dd className="mt-1.5 flex items-baseline gap-1.5">
+                        <span className="text-ink font-mono text-lg leading-none tabular-nums">
+                          {stat.value}
+                        </span>
+                        {stat.delta && (
+                          <span
+                            className={cn(
+                              "font-mono text-[10px]",
+                              stat.delta.startsWith("+")
+                                ? "text-success"
+                                : "text-info",
+                            )}
+                          >
+                            {stat.delta}
+                          </span>
+                        )}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+              </Section>
 
-          {/* Screenshots */}
-          <Section label="Screenshots" icon="palette">
-            <ul className="flex snap-x gap-3 overflow-x-auto pb-1">
-              {project.shots.map((shot, shotIndex) => (
-                <li key={shot.title} className="w-56 shrink-0 snap-start">
-                  <figure className="border-line/70 overflow-hidden rounded-xl border bg-white/[0.02]">
-                    <ShotArt project={project} variant={shotIndex} />
-                    <figcaption className="border-line/60 border-t px-3 py-2">
-                      <p className="text-ink text-xs font-medium">
-                        {shot.title}
-                      </p>
-                      <p className="text-ink-muted mt-0.5 text-[10px] leading-snug">
-                        {shot.caption}
-                      </p>
-                    </figcaption>
-                  </figure>
-                </li>
-              ))}
-            </ul>
-          </Section>
+              {/* Technologies */}
+              <Section label="Technologies" icon="boxes">
+                <div className="flex flex-wrap gap-1.5">
+                  {project.stack.map((tech) => (
+                    <span
+                      key={tech}
+                      className="border-line/80 text-ink-muted rounded-full border bg-white/[0.04] px-2.5 py-1 font-mono text-[11px] tracking-wide"
+                    >
+                      {tech}
+                    </span>
+                  ))}
+                </div>
+              </Section>
 
-          {/* Architecture overview */}
-          <Section label="Architecture" icon="layers">
-            <ol className="relative space-y-3.5 pl-5">
-              <span
-                aria-hidden="true"
-                className="bg-line-strong absolute top-1.5 bottom-1.5 left-[3px] w-px"
-              />
-              {project.architecture.map((layer) => (
-                <li key={layer.name} className="relative">
+              {screenshotsSection}
+
+              {/* Architecture overview */}
+              <Section label="Architecture" icon="layers">
+                <ol className="relative space-y-3.5 pl-5">
                   <span
                     aria-hidden="true"
-                    className="shadow-glow-dot-current text-aura-violet absolute top-1 -left-5 size-[7px] rounded-full bg-current"
+                    className="bg-line-strong absolute top-1.5 bottom-1.5 left-[3px] w-px"
                   />
-                  <p className="text-aura-violet-soft text-micro tracking-caps font-mono">
-                    {layer.name}
-                  </p>
-                  <p className="text-ink-muted mt-0.5 text-xs leading-snug">
-                    {layer.detail}
-                  </p>
-                </li>
-              ))}
-            </ol>
-          </Section>
-
-          {/* Timeline */}
-          <Section label="Timeline" icon="clock">
-            <ol>
-              {project.timeline.map((milestone, msIndex) => {
-                const meta = MILESTONE_META[milestone.status];
-                const last = msIndex === project.timeline.length - 1;
-                return (
-                  <li key={milestone.label} className="flex gap-3">
-                    <div className="flex flex-col items-center">
+                  {project.architecture.map((layer) => (
+                    <li key={layer.name} className="relative">
                       <span
-                        className={cn(
-                          "mt-1.5 size-2 shrink-0 rounded-full",
-                          meta.dot,
-                        )}
+                        aria-hidden="true"
+                        className="shadow-glow-dot-current text-aura-violet absolute top-1 -left-5 size-[7px] rounded-full bg-current"
                       />
-                      {!last && <span className="bg-line w-px flex-1" />}
-                    </div>
-                    <div className={cn("min-w-0 pb-4", last && "pb-0")}>
-                      <p className="text-ink text-xs font-medium">
-                        {milestone.label}
+                      <p className="text-aura-violet-soft text-micro tracking-caps font-mono">
+                        {layer.name}
                       </p>
-                      <p className="text-ink-muted mt-0.5 font-mono text-[10px]">
-                        {formatDate(milestone.date)} ·{" "}
-                        <span className={meta.text}>{meta.label}</span>
+                      <p className="text-ink-muted mt-0.5 text-xs leading-snug">
+                        {layer.detail}
                       </p>
-                    </div>
-                  </li>
-                );
-              })}
-            </ol>
-          </Section>
+                    </li>
+                  ))}
+                </ol>
+              </Section>
 
-          {/* Related projects — select one to fly straight there */}
-          <Section label="Related worlds" icon="network">
-            <ul className="grid gap-2">
-              {related.map((entry) => (
-                <li key={entry.id}>
-                  <button
-                    type="button"
-                    onClick={() => focus(entry.id)}
-                    className="border-line/70 hover:border-aura-violet/50 group flex w-full items-center gap-3 rounded-xl border bg-white/[0.03] p-3 text-left transition-colors hover:bg-white/[0.06]"
+              {timelineSection}
+
+              {/* Related projects — select one to fly straight there */}
+              <Section label="Related worlds" icon="network">
+                <ul className="grid gap-2">
+                  {related.map((entry) => (
+                    <li key={entry.id}>
+                      <button
+                        type="button"
+                        onClick={() => focus(entry.id)}
+                        className="border-line/70 hover:border-aura-violet/50 group flex w-full items-center gap-3 rounded-xl border bg-white/[0.03] p-3 text-left transition-colors hover:bg-white/[0.06]"
+                      >
+                        <span
+                          aria-hidden="true"
+                          className="size-2.5 shrink-0 rounded-full"
+                          style={{
+                            backgroundColor: entry.planet.atmosphere,
+                            boxShadow: `0 0 10px ${entry.planet.atmosphere}`,
+                          }}
+                        />
+                        <span className="min-w-0 flex-1">
+                          <span className="text-ink block truncate text-sm font-medium">
+                            {entry.name}
+                          </span>
+                          <span className="text-ink-muted block truncate font-mono text-[10px]">
+                            {entry.stack.slice(0, 2).join(" · ")}
+                          </span>
+                        </span>
+                        <Icon
+                          name="arrow-right"
+                          size="xs"
+                          className="text-ink-ghost group-hover:text-aura-violet-soft transition-colors"
+                        />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </Section>
+
+              {/* Quick actions */}
+              <Section label="Quick actions" icon="zap">
+                <div className="grid grid-cols-2 gap-2.5">
+                  <Button asChild variant="glass" size="sm">
+                    <a
+                      href={project.links.demo}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <Icon name="external" size="xs" />
+                      <span>Live demo</span>
+                    </a>
+                  </Button>
+                  <Button asChild variant="glass" size="sm">
+                    <a
+                      href={project.links.repo}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <Icon name="github" size="xs" />
+                      <span>Repository</span>
+                    </a>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={copyBrief}
+                    iconLeft={<Icon name={copied ? "check" : "copy"} />}
                   >
-                    <span
-                      aria-hidden="true"
-                      className="size-2.5 shrink-0 rounded-full"
-                      style={{
-                        backgroundColor: entry.planet.atmosphere,
-                        boxShadow: `0 0 10px ${entry.planet.atmosphere}`,
-                      }}
-                    />
-                    <span className="min-w-0 flex-1">
-                      <span className="text-ink block truncate text-sm font-medium">
-                        {entry.name}
-                      </span>
-                      <span className="text-ink-muted block truncate font-mono text-[10px]">
-                        {entry.stack.slice(0, 2).join(" · ")}
-                      </span>
-                    </span>
-                    <Icon
-                      name="arrow-right"
-                      size="xs"
-                      className="text-ink-ghost group-hover:text-aura-violet-soft transition-colors"
-                    />
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </Section>
+                    {copied ? "Copied" : "Copy AI brief"}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={release}
+                    iconLeft={<Icon name="orbit" />}
+                  >
+                    Back to orbit
+                  </Button>
+                </div>
+              </Section>
+            </>
+          )}
 
-          {/* Quick actions */}
-          <Section label="Quick actions" icon="zap">
-            <div className="grid grid-cols-2 gap-2.5">
-              <Button asChild variant="glass" size="sm">
-                <a
-                  href={project.links.demo}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <Icon name="external" size="xs" />
-                  <span>Live demo</span>
-                </a>
-              </Button>
-              <Button asChild variant="glass" size="sm">
-                <a
-                  href={project.links.repo}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <Icon name="github" size="xs" />
-                  <span>Repository</span>
-                </a>
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={copyBrief}
-                iconLeft={<Icon name={copied ? "check" : "copy"} />}
-              >
-                {copied ? "Copied" : "Copy AI brief"}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={release}
-                iconLeft={<Icon name="orbit" />}
-              >
-                Back to orbit
-              </Button>
-            </div>
-          </Section>
+          {tab === "notes" && <NotesTabBody project={project} work={work} />}
+          {tab === "tasks" && <TasksTabBody project={project} work={work} />}
+          {tab === "documents" && (
+            <DocumentsTabBody project={project} work={work} />
+          )}
+          {tab === "screenshots" && screenshotsSection}
+          {tab === "github" && <GithubTabBody project={project} work={work} />}
+          {tab === "timeline" && timelineSection}
+          {tab === "insights" && (
+            <InsightsTabBody project={project} work={work} />
+          )}
+          {tab === "activity" && (
+            <ActivityTabBody project={project} work={work} />
+          )}
+          {tab === "analytics" && (
+            <AnalyticsTabBody project={project} work={work} />
+          )}
         </motion.div>
       </div>
 

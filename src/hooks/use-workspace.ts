@@ -3,7 +3,10 @@
 import * as React from "react";
 import { useShallow } from "zustand/react/shallow";
 
+import { generatePlanetActivity } from "@/lib/universe-generator";
 import {
+  STOCK_SEED,
+  useStockWorkspaceStore,
   useWorkspaceStore,
   type WorkspaceBackup,
   type WorkspaceState,
@@ -179,4 +182,145 @@ export function useTaskSummary(universeId: string | null): {
       return { total, done };
     }),
   );
+}
+
+/* ── dossier workspace (stock + generated, one surface) ──────────────────── */
+
+export interface DossierWorkspace {
+  meta: PlanetMeta | null;
+  tasks: PlanetTask[];
+  notes: PlanetNote[];
+  documents: PlanetDocument[];
+  activity: PlanetActivity[];
+  /** Universe seed for deterministic forecasts (`STOCK_SEED` on stock). */
+  seedKey: string;
+  addTask: (title: string) => void;
+  toggleTask: (taskId: string) => void;
+  deleteTask: (taskId: string) => void;
+  addNote: (title: string, body: string) => void;
+  updateNote: (
+    noteId: string,
+    patch: Partial<Pick<PlanetNote, "title" | "body">>,
+  ) => void;
+  deleteNote: (noteId: string) => void;
+  addDocument: (name: string, kind: string) => void;
+  deleteDocument: (documentId: string) => void;
+}
+
+/**
+ * Per-planet workspace data *and bound actions* for the dossier — the one
+ * surface where the stock graph and a generated universe must behave alike.
+ *
+ * • no active record → the built-in stock scene: data lives in
+ *   `stock-workspace` (seeded once per planet from the same generators a
+ *   fresh profile sees, then persisted with the user's edits).
+ * • otherwise → the universe record's buckets via `usePlanetWorkspace`,
+ *   with the workspace store's actions bound to this universe/planet.
+ *
+ * Dispatch keys off *record presence* — the same condition the shell uses
+ * to pick the scene — so a not-yet-hydrated record never mis-seeds the
+ * stock bucket or shows generated data over the stock worlds.
+ */
+export function useDossierWorkspace(planetId: string | null): DossierWorkspace {
+  const record = useActiveUniverseRecord();
+  const universeId = record?.id ?? null;
+  const isStock = record === null;
+  const generated = usePlanetWorkspace(universeId, planetId);
+  const stockBucket = useStockWorkspaceStore((state) =>
+    planetId ? state.planets[planetId] : undefined,
+  );
+
+  /* Seed the stock bucket once per planet (idempotent). */
+  React.useEffect(() => {
+    if (planetId && isStock) {
+      useStockWorkspaceStore.getState().ensurePlanet(planetId);
+    }
+  }, [planetId, isStock]);
+
+  /* Activity is display-only — regenerated per planet on the stock graph. */
+  const stockActivity = React.useMemo<PlanetActivity[]>(
+    () =>
+      !isStock || !planetId
+        ? []
+        : generatePlanetActivity(
+            { seed: STOCK_SEED } as UniverseRecord,
+            planetId,
+          ),
+    [isStock, planetId],
+  );
+
+  const actions = React.useMemo(() => {
+    /* Narrow once — the guards live in dispatch, so the closures below
+       can't rely on TS narrowing of the nullable parameter. */
+    const id = planetId ?? "";
+    const uid = universeId ?? "";
+    const workspace = workspaceActions();
+    const stock = () => useStockWorkspaceStore.getState();
+    /** Stock edits go to the sibling store; record edits to the workspace. */
+    const dispatch = (runStock: () => void, runGenerated: () => void) => {
+      if (!id) return;
+      if (isStock) runStock();
+      else runGenerated();
+    };
+
+    return {
+      addTask: (title: string) =>
+        dispatch(
+          () => stock().addTask(id, title),
+          () => workspace.addTask(uid, id, title),
+        ),
+      toggleTask: (taskId: string) =>
+        dispatch(
+          () => stock().toggleTask(id, taskId),
+          () => workspace.toggleTask(uid, id, taskId),
+        ),
+      deleteTask: (taskId: string) =>
+        dispatch(
+          () => stock().deleteTask(id, taskId),
+          () => workspace.deleteTask(uid, id, taskId),
+        ),
+      addNote: (title: string, body: string) =>
+        dispatch(
+          () => stock().addNote(id, title, body),
+          () => workspace.addNote(uid, id, title, body),
+        ),
+      updateNote: (
+        noteId: string,
+        patch: Partial<Pick<PlanetNote, "title" | "body">>,
+      ) =>
+        dispatch(
+          () => stock().updateNote(id, noteId, patch),
+          () => workspace.updateNote(uid, id, noteId, patch),
+        ),
+      deleteNote: (noteId: string) =>
+        dispatch(
+          () => stock().deleteNote(id, noteId),
+          () => workspace.deleteNote(uid, id, noteId),
+        ),
+      addDocument: (name: string, kind: string) =>
+        dispatch(
+          () => stock().addDocument(id, name, kind),
+          () => workspace.addDocument(uid, id, name, kind),
+        ),
+      deleteDocument: (documentId: string) =>
+        dispatch(
+          () => stock().deleteDocument(id, documentId),
+          () => workspace.deleteDocument(uid, id, documentId),
+        ),
+    };
+  }, [isStock, planetId, universeId]);
+
+  const seedKey = record ? String(record.seed) : String(STOCK_SEED);
+
+  return {
+    meta: isStock ? null : (generated?.meta ?? null),
+    tasks: isStock ? (stockBucket?.tasks ?? []) : (generated?.tasks ?? []),
+    notes: isStock ? (stockBucket?.notes ?? []) : (generated?.notes ?? []),
+    documents: isStock
+      ? (stockBucket?.docs ?? [])
+      : (generated?.documents ?? []),
+    activity: isStock ? stockActivity : (generated?.activity ?? []),
+    seedKey,
+    ...actions,
+  };
 }

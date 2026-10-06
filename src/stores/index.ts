@@ -8,6 +8,7 @@
  *   stores/assistant-store.ts– /universe Astra orb open state + transcript
  *   stores/timeline-store.ts – /universe knowledge-timeline viewed date
  *   stores/workspace-store.ts– multi-universe workspace (persisted)
+ *   stores/stock-workspace.ts– stock-graph per-planet tasks/notes/docs
  *
  * Server state belongs in React Query (`src/services`), not Zustand.
  * Consumers read stores through `src/hooks` — never import them from
@@ -38,3 +39,8 @@ export {
   type WorkspaceState,
   type WorkspaceBackup,
 } from "./workspace-store";
+export {
+  useStockWorkspaceStore,
+  STOCK_SEED,
+  type StockWorkspaceState,
+} from "./stock-workspace";
