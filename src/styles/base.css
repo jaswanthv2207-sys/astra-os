@@ -1,0 +1,98 @@
+/* ==========================================================================
+   Astra OS · Base Layer
+   Global element styling applied through Tailwind's `base` cascade layer.
+   ========================================================================== */
+
+@layer base {
+  /* ── Page canvas ─────────────────────────────────────────────────────── */
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  body {
+    min-height: 100dvh;
+    background-color: var(--surface-base);
+    background-image: var(--gradient-page-aura);
+    background-attachment: fixed;
+    background-repeat: no-repeat;
+    color: var(--ink-primary);
+    font-family: var(--ui-font-sans);
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* ── Headings inherit the tight display tracking ─────────────────────── */
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    color: var(--ink-primary);
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  /* ── Aura gradient text helper (used with .text-gradient) ────────────── */
+  ::selection {
+    background-color: rgb(139 92 246 / 0.4);
+    color: var(--ink-primary);
+  }
+
+  /* ── Focus: visible, on-brand, never removed ─────────────────────────── */
+  :focus-visible {
+    outline: 2px solid var(--palette-violet);
+    outline-offset: 2px;
+    border-radius: var(--r-xs);
+  }
+
+  /* ── Smooth, unobtrusive scrollbar (Arc / Linear style) ──────────────── */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(255 255 255 / 0.14) transparent;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background-color: rgb(255 255 255 / 0.14);
+    border: 3px solid transparent;
+    border-radius: var(--r-pill);
+    background-clip: content-box;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: rgb(255 255 255 / 0.24);
+    background-clip: content-box;
+  }
+
+  /* ── Respect reduced-motion everywhere ───────────────────────────────── */
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}

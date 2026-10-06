@@ -1,0 +1,275 @@
+/* ==========================================================================
+   Astra OS · Design Tokens
+   --------------------------------------------------------------------------
+   Single source of truth for the entire visual language.
+   Inspired by Apple Vision Pro (glass + light), Arc (aura colour),
+   Linear (precision) and Vercel (monochrome clarity).
+
+   Naming contract:
+     • Raw tokens live here on `:root` with NO Tailwind namespace prefix
+       (--palette-*, --surface-*, --elev-*, --r-*, --fs-*, …).
+     • `styles/theme.css` maps them into Tailwind v4 `@theme` namespaces
+       (--color-*, --radius-*, --shadow-*, --text-*, …) so utilities like
+       `bg-aura-violet`, `rounded-glass`, `shadow-glow-violet` work.
+     • Custom CSS always references the RAW names below.
+     • Never give a raw token the same name as a theme key — with
+       `@theme inline` that creates a circular reference.
+
+   To re-theme (light mode, white-label): override these raw vars in a
+   scoped selector such as `.light { --palette-violet: … }`.
+   ========================================================================== */
+
+:root {
+  color-scheme: dark;
+
+  /* ── Surfaces ─────────────────────────────────────────────────────────── */
+  --surface-void: #000000;
+  --surface-base: #050507; /* page canvas */
+  --surface-raised: #0b0b12; /* cards, panels */
+  --surface-overlay: #12121a; /* popovers, dropdowns */
+  --surface-highest: #1a1a24; /* highest elevation */
+  --surface-glass: rgb(255 255 255 / 0.04); /* glass fill */
+  --surface-glass-strong: rgb(255 255 255 / 0.07);
+
+  /* ── Borders ──────────────────────────────────────────────────────────── */
+  --border-hairline: rgb(255 255 255 / 0.06);
+  --border-subtle: rgb(255 255 255 / 0.1);
+  --border-strong: rgb(255 255 255 / 0.18);
+  --border-aura: rgb(139 92 246 / 0.4);
+
+  /* ── Ink (text) ───────────────────────────────────────────────────────── */
+  --ink-primary: #f5f5f7;
+  --ink-secondary: #a1a1aa;
+  --ink-tertiary: #71717a;
+  --ink-quaternary: #52525b;
+  --ink-inverse: #050507;
+  --ink-on-aura: #ffffff;
+
+  /* ── Aura hues ────────────────────────────────────────────────────────── */
+  --palette-violet: #8b5cf6;
+  --palette-violet-soft: #c4b5fd; /* readable label on violet-tinted fills */
+  --palette-indigo: #6366f1;
+  --palette-blue: #3b82f6;
+  --palette-cyan: #22d3ee;
+  --palette-teal: #2dd4bf;
+  --palette-fuchsia: #e879f9;
+  --palette-rose: #f472b6;
+
+  /* ── Semantic states ──────────────────────────────────────────────────── */
+  --semantic-success: #34d399;
+  --semantic-success-dim: rgb(52 211 153 / 0.12);
+  --semantic-warning: #fbbf24;
+  --semantic-warning-dim: rgb(251 191 36 / 0.14);
+  --semantic-danger: #fb7185;
+  --semantic-danger-dim: rgb(251 113 133 / 0.14);
+  --semantic-info: #38bdf8;
+  --semantic-info-dim: rgb(56 189 248 / 0.14);
+
+  /* ── Gradients ────────────────────────────────────────────────────────── */
+  --gradient-aura: linear-gradient(
+    120deg,
+    #e879f9 0%,
+    #8b5cf6 30%,
+    #6366f1 58%,
+    #22d3ee 100%
+  );
+  --gradient-aura-text: linear-gradient(
+    115deg,
+    #f5f5f7 0%,
+    #c4b5fd 38%,
+    #67e8f9 72%,
+    #f0abfc 100%
+  );
+  --gradient-aura-soft: linear-gradient(
+    135deg,
+    rgb(139 92 246 / 0.5),
+    rgb(34 211 238 / 0.28)
+  );
+  /* CTA fill: violet → indigo only (no cyan) so white label text stays
+     ≥ 4.5:1 across the whole sweep. Stops are ordered for a horizontal
+     background-position animation on hover (`bg-cta-end`). */
+  --gradient-cta: linear-gradient(
+    115deg,
+    #8b5cf6 0%,
+    #6366f1 52%,
+    #4f46e5 100%
+  );
+  --gradient-glass: linear-gradient(
+    158deg,
+    rgb(255 255 255 / 0.09),
+    rgb(255 255 255 / 0.02) 48%,
+    rgb(255 255 255 / 0.05)
+  );
+  --gradient-sheen: linear-gradient(
+    180deg,
+    rgb(255 255 255 / 0.14),
+    transparent 42%
+  );
+  --gradient-glow: radial-gradient(
+    closest-side,
+    rgb(139 92 246 / 0.4),
+    transparent 72%
+  );
+  /* Fixed ambient light behind every page (Vision Pro "aura") */
+  --gradient-page-aura:
+    radial-gradient(
+      55rem 40rem at 12% -8%,
+      rgb(139 92 246 / 0.16),
+      transparent 62%
+    ),
+    radial-gradient(
+      48rem 34rem at 88% -4%,
+      rgb(34 211 238 / 0.1),
+      transparent 58%
+    ),
+    radial-gradient(
+      46rem 34rem at 50% 108%,
+      rgb(232 121 249 / 0.1),
+      transparent 62%
+    );
+
+  /* ── Texture ──────────────────────────────────────────────────────────── */
+  --noise-texture: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='grain'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23grain)'/%3E%3C/svg%3E");
+
+  /* ── Typography ───────────────────────────────────────────────────────── */
+  --ui-font-sans:
+    var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    Roboto, sans-serif;
+  --ui-font-mono:
+    var(--font-geist-mono), ui-monospace, SFMono-Regular, "SF Mono", Menlo,
+    monospace;
+
+  /* Fluid type scale (clamp: small → large viewport) */
+  --fs-micro: 0.6875rem; /* 11px — uppercase micro-labels, hints, captions */
+  --fs-display: clamp(2.75rem, 1.2rem + 6vw, 5.5rem);
+  --fs-hero: clamp(2.25rem, 1.4rem + 3.6vw, 3.75rem);
+  --fs-title: clamp(1.75rem, 1.3rem + 1.8vw, 2.5rem);
+  --fs-subtitle: clamp(1.25rem, 1.1rem + 0.7vw, 1.5rem);
+  --fs-lead: 1.125rem;
+
+  --lh-micro: 1.4;
+  --lh-display: 0.95;
+  --lh-hero: 1.05;
+  --lh-title: 1.15;
+  --lh-subtitle: 1.4;
+  --lh-body: 1.6;
+
+  --ls-display: -0.045em;
+  --ls-hero: -0.035em;
+  --ls-title: -0.025em;
+  --ls-subtitle: -0.012em;
+  --ls-caps: 0.16em;
+
+  /* ── Spacing ──────────────────────────────────────────────────────────── */
+  /* ONE scale with two layers:
+     • LINEAR — every `p-* / m-* / gap-* / size-*` step multiplies the base
+       unit (4px major grid; Tailwind's `.5` steps are the 2px micro-step),
+       so `p-4` = 16px, `gap-2.5` = 10px. Use these inside components.
+     • FLUID — structural rhythm that must stay proportional to the viewport,
+       exposed as @utility rules in components.css (`py-section`,
+       `px-gutter`, `container-page`).
+     Rule for reusable components: only scale steps or these tokens —
+     never an arbitrary value. One-off values get promoted to a token. */
+  --spacing-unit: 0.25rem; /* base scale behind every p-*, m-*, gap-* */
+  --space-section: clamp(5rem, 3rem + 7vw, 9rem); /* between page sections */
+  --space-gutter: clamp(1.25rem, 1rem + 2vw, 2.5rem); /* page side padding */
+
+  /* ── Icons ────────────────────────────────────────────────────────────── */
+  /* The entire product draws icons from this ramp — one stroke weight, one
+     size scale (see the `icon` / `icon-*` utilities in components.css and
+     the <Icon> component in components/ui/icon.tsx). Sizes track control
+     height: 14px inside compact controls → 20px standalone (nav, dock). */
+  --icon-stroke: 1.75; /* stroke-width applied via CSS to every icon */
+  --icon-xs: 0.875rem; /* 14 — kbd hints, clear buttons, compact controls */
+  --icon-sm: 1rem; /* 16 — default inline icon (buttons, inputs) */
+  --icon-md: 1.125rem; /* 18 — large buttons, focused fields */
+  --icon-lg: 1.25rem; /* 20 — standalone icons (navbar, dock) */
+  --icon-xl: 1.5rem; /* 24 — feature surfaces */
+  --icon-2xl: 2rem; /* 32 — empty states, showcases */
+
+  /* ── Border radius (squircle-forward) ─────────────────────────────────── */
+  --r-xs: 0.25rem;
+  --r-sm: 0.5rem;
+  --r-md: 0.75rem;
+  --r-lg: 1rem;
+  --r-xl: 1.25rem;
+  --r-2xl: 1.5rem;
+  --r-3xl: 2rem;
+  --r-4xl: 2.75rem;
+  --r-glass: 1.75rem; /* signature card radius */
+  --r-pill: 9999px;
+
+  /* ── Shadows & glow ───────────────────────────────────────────────────── */
+  --elev-xs: 0 1px 2px rgb(0 0 0 / 0.4);
+  --elev-sm: 0 2px 6px -1px rgb(0 0 0 / 0.45), 0 1px 2px -1px rgb(0 0 0 / 0.35);
+  --elev-md: 0 8px 24px -8px rgb(0 0 0 / 0.5), 0 2px 6px -2px rgb(0 0 0 / 0.35);
+  --elev-lg:
+    0 18px 44px -14px rgb(0 0 0 / 0.55), 0 4px 12px -4px rgb(0 0 0 / 0.4);
+  --elev-xl:
+    0 32px 70px -20px rgb(0 0 0 / 0.6), 0 8px 20px -8px rgb(0 0 0 / 0.45);
+
+  --glow-violet:
+    0 0 0 1px rgb(139 92 246 / 0.28), 0 0 28px -6px rgb(139 92 246 / 0.55);
+  --glow-cyan:
+    0 0 0 1px rgb(34 211 238 / 0.25), 0 0 28px -6px rgb(34 211 238 / 0.45);
+  --glow-aura:
+    0 0 0 1px rgb(255 255 255 / 0.07), 0 0 40px -10px rgb(139 92 246 / 0.5),
+    0 0 70px -24px rgb(34 211 238 / 0.4);
+  /* Soft violet bloom without a ring — active badges, active dock items. */
+  --glow-soft: 0 0 20px -6px rgb(139 92 246 / 0.75);
+  /* Danger counterpart of --glow-violet (same shape, rose hue). */
+  --glow-danger:
+    0 0 0 1px rgb(251 113 133 / 0.3), 0 0 28px -6px rgb(251 113 133 / 0.55);
+  /* Tight dot glow — active indicators 6–8px across. */
+  --glow-dot: 0 0 8px rgb(139 92 246 / 0.9);
+  --glow-dot-current: 0 0 8px currentColor;
+
+  /* Focus rings drawn as shadows (input wrappers, tinted halos). */
+  --ring-aura: 0 0 0 3px rgb(139 92 246 / 0.18);
+  --ring-danger: 0 0 0 3px rgb(251 113 133 / 0.15);
+
+  --glass-shadow:
+    0 16px 40px -16px rgb(0 0 0 / 0.6), inset 0 1px 0 rgb(255 255 255 / 0.08);
+  --inner-highlight: inset 0 1px 0 rgb(255 255 255 / 0.06);
+
+  /* ── Glass / blur ─────────────────────────────────────────────────────── */
+  --glass-blur: 16px;
+  --glass-blur-lg: 28px;
+  --glass-blur-xl: 44px;
+  --glass-saturate: 1.6;
+
+  /* ── Motion ───────────────────────────────────────────────────────────── */
+  /* NOTE: prefixed `motion-*` because `--ease-*` is the Tailwind theme key
+     namespace — same-name tokens would be circular under `@theme inline`. */
+  --motion-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --motion-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+  --motion-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --motion-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+
+  --dur-fast: 150ms;
+  --dur-base: 250ms;
+  --dur-slow: 500ms;
+  --dur-slower: 800ms;
+
+  /* Raw animation shorthands (referenced by theme + @keyframes) */
+  --anim-float: float 7s var(--motion-smooth) infinite;
+  --anim-pulse-glow: pulse-glow 3.5s var(--motion-smooth) infinite;
+  --anim-aurora: aurora 18s var(--motion-smooth) infinite alternate;
+  --anim-shimmer: shimmer 2.6s linear infinite;
+  --anim-fade-up: fade-up 0.7s var(--motion-out-expo) both;
+  --anim-spin-slow: spin-slow 14s linear infinite;
+  --anim-time-drift: time-drift 1.5s linear infinite;
+
+  /* ── Layers (z-index) ─────────────────────────────────────────────────── */
+  --layer-base: 0;
+  --layer-raised: 10;
+  --layer-sticky: 100;
+  --layer-overlay: 400;
+  --layer-modal: 500;
+  --layer-popover: 600;
+  --layer-toast: 700;
+  --layer-tooltip: 800;
+  --layer-grain: 900;
+  /* Cinematic route transitions (warp overlay) — always above everything. */
+  --layer-launch: 1000;
+}

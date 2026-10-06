@@ -1,0 +1,34 @@
+/**
+ * Global Zustand stores (one file or folder per store).
+ *
+ *   stores/ui-store.ts       – transient UI state (modals, theme, sidebar)
+ *   stores/launch-store.ts   – cinematic "enter the universe" transition
+ *   stores/universe-store.ts – which world the /universe camera focuses
+ *   stores/search-store.ts   – /universe AI search text + matched/frame ids
+ *   stores/assistant-store.ts– /universe Astra orb open state + transcript
+ *   stores/timeline-store.ts – /universe knowledge-timeline viewed date
+ *   stores/preferences.ts    – persisted user preferences (localStorage)
+ *
+ * Server state belongs in React Query (`src/services`), not Zustand.
+ * Consumers read stores through `src/hooks` — never import them from
+ * components or sections (see STRUCTURE.md dependency rules).
+ */
+export {
+  useLaunchStore,
+  selectLaunching,
+  type LaunchPhase,
+  type LaunchState,
+} from "./launch-store";
+export {
+  useUniverseStore,
+  selectFocusedId,
+  type UniverseState,
+} from "./universe-store";
+export { useSearchStore, type SearchState } from "./search-store";
+export {
+  useAssistantStore,
+  type AssistantAction,
+  type AssistantMessage,
+  type AssistantState,
+} from "./assistant-store";
+export { useTimelineStore, type TimelineState } from "./timeline-store";

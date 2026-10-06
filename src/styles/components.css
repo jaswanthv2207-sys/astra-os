@@ -1,0 +1,384 @@
+/* ==========================================================================
+   Astra OS · Component Utilities
+   Reusable visual patterns built on the token layer. Registered with
+   `@utility` so they participate in Tailwind's utility layer and support
+   variants (hover:glass, md:glass, focus-within:glass, …).
+   ========================================================================== */
+
+/* ── Glassmorphism (Vision Pro material) ──────────────────────────────────── *
+ * Declare `backdrop-filter` unprefixed ONLY. Shipping an explicit
+ * `-webkit-backdrop-filter` alongside it makes the CSS pipeline drop the
+ * unprefixed form, and Chrome ignores the webkit-only alias — the glass
+ * would silently lose its blur. The vendor prefixer re-adds `-webkit-`
+ * for the Safari targets that still need it.
+ * ───────────────────────────────────────────────────────────────────────── */
+@utility glass {
+  background-color: var(--surface-glass);
+  background-image: var(--gradient-glass);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--glass-shadow);
+}
+
+@utility glass-subtle {
+  background-color: rgb(255 255 255 / 0.02);
+  backdrop-filter: blur(var(--glass-blur-lg)) saturate(var(--glass-saturate));
+  border: 1px solid var(--border-hairline);
+  box-shadow: var(--inner-highlight);
+}
+
+@utility glass-strong {
+  background-color: var(--surface-glass-strong);
+  background-image: var(--gradient-glass);
+  backdrop-filter: blur(var(--glass-blur-xl)) saturate(var(--glass-saturate));
+  border: 1px solid var(--border-strong);
+  box-shadow: var(--glass-shadow);
+}
+
+/* ── Holographic planet labels ───────────────────────────────────────────── *
+ * The universe's floating name pills, made to read as projected light: a
+ * scanline substrate, a light sweep that gestures once every 6.5s and then
+ * rests, a rare micro-flicker across the glyph run (hard-stepped, like a
+ * tired projector) and a softly breathing status dot. Everything is opacity
+ * and background-position only — cheap to composite next to the canvas —
+ * and every animation parks under prefers-reduced-motion. */
+@keyframes holo-sweep {
+  0% {
+    background-position: 230% 0;
+  }
+  55%,
+  100% {
+    background-position: -80% 0;
+  }
+}
+
+@keyframes holo-flicker {
+  0%,
+  91%,
+  100% {
+    opacity: 1;
+  }
+  92% {
+    opacity: 0.55;
+  }
+  93% {
+    opacity: 1;
+  }
+  95% {
+    opacity: 0.72;
+  }
+  96% {
+    opacity: 1;
+  }
+}
+
+@keyframes holo-beacon {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(0.72);
+  }
+}
+
+@utility holo-label {
+  position: relative;
+
+  /* Scanline substrate */
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent 0 2px,
+      rgb(255 255 255 / 0.05) 2px 3px
+    );
+    pointer-events: none;
+  }
+
+  /* Travelling light sweep */
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(
+      115deg,
+      transparent 42%,
+      rgb(167 139 250 / 0.22) 50%,
+      transparent 58%
+    );
+    background-size: 260% 100%;
+    background-repeat: no-repeat;
+    background-position: 230% 0;
+    animation: holo-sweep 6.5s linear infinite;
+    pointer-events: none;
+  }
+
+  /* Glyph run micro-flicker (hard steps) */
+  & > span:last-child {
+    animation: holo-flicker 9s steps(1, end) infinite;
+  }
+
+  /* Status dot breathes */
+  & > span:first-child {
+    animation: holo-beacon 3.2s ease-in-out infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    &::after {
+      animation: none;
+      background-position: -80% 0;
+    }
+
+    & > span:last-child,
+    & > span:first-child {
+      animation: none;
+    }
+  }
+}
+
+/* ── Aura gradients ─────────────────────────────────────────────────────── */
+/* Gradient-clipped headline text */
+@utility text-gradient {
+  background-image: var(--gradient-aura-text);
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Animated gradient-clipped text — the aura slowly drifts across the
+   glyphs. Static (animation off) under prefers-reduced-motion. */
+@utility text-aurora {
+  background-image: var(--gradient-aura-text);
+  background-size: 260% 260%;
+  background-position: 0% 50%;
+  animation: aurora 14s var(--motion-smooth) infinite alternate;
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+    background-position: 50% 50%;
+  }
+}
+
+/* Animated aurora fill — pair with animate-aurora */
+@utility bg-aura {
+  background-image: var(--gradient-aura);
+  background-size: 200% 200%;
+}
+
+/* CTA fill (button-safe gradient, white label ≥ 4.5:1 everywhere).
+   Pair with `bg-cta-end` on hover for a gradient sweep — `transition-all`
+   on the element animates background-position. */
+@utility bg-cta {
+  background-image: var(--gradient-cta);
+  background-size: 200% 200%;
+  background-position: 0% 50%;
+}
+
+@utility bg-cta-end {
+  background-position: 100% 50%;
+}
+
+/* Soft ambient glow blob used behind heroes */
+@utility glow-blob {
+  position: absolute;
+  border-radius: var(--r-pill);
+  background-image: var(--gradient-glow);
+  filter: blur(60px);
+  pointer-events: none;
+}
+
+/* ── Border treatments ──────────────────────────────────────────────────── */
+/* NOTE: hairline border colour comes from the `--color-hairline` token
+   (`border border-hairline`). Below are the non-colour treatments. */
+
+/* Gradient border (aura) drawn with a masked ring */
+@utility border-gradient {
+  position: relative;
+  border: 1px solid transparent;
+  background:
+    linear-gradient(var(--surface-raised), var(--surface-raised)) padding-box,
+    var(--gradient-aura) border-box;
+}
+
+/* ── Interaction states ─────────────────────────────────────────────────── */
+@utility interactive {
+  transition:
+    transform var(--dur-base) var(--motion-out-expo),
+    box-shadow var(--dur-base) var(--motion-out-expo),
+    background-color var(--dur-base) var(--motion-out-expo),
+    border-color var(--dur-base) var(--motion-out-expo);
+}
+
+@utility interactive-lift {
+  transition: transform var(--dur-base) var(--motion-out-expo);
+
+  &:hover {
+    transform: translateY(-2px);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+}
+
+/* ── Loading ────────────────────────────────────────────────────────────── */
+/* Skeleton sweep band: inset-0 layer translated fully off → fully off, so
+   the highlight crosses the whole placeholder on every loop. */
+@keyframes skeleton-sweep {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@utility shimmer-band {
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(
+    90deg,
+    transparent,
+    rgb(255 255 255 / 0.07),
+    transparent
+  );
+  animation: skeleton-sweep 1.8s var(--motion-smooth) infinite;
+}
+
+/* ── Icons ──────────────────────────────────────────────────────────────── */
+/* The product-wide icon contract: one size ramp + one stroke weight.
+   `icon` only READS `--icon-size` (falling back to `sm`), so a size can be
+   imposed from an ancestor — Button does exactly that with
+   `[&_svg]:icon-sm` — without cascade-order ambiguity. Each `icon-*` step
+   is standalone-complete (size + stroke + no-shrink) so it also works on a
+   bare `<svg>` that never carries `.icon`. Sizes come from `--icon-*`
+   tokens; stroke from `--icon-stroke`, which beats lucide's own
+   `stroke-width` attribute (CSS > presentation attributes). */
+
+@utility icon {
+  inline-size: var(--icon-size, var(--icon-sm));
+  block-size: var(--icon-size, var(--icon-sm));
+  stroke-width: var(--icon-stroke);
+  flex-shrink: 0;
+}
+
+@utility icon-xs {
+  --icon-size: var(--icon-xs);
+  inline-size: var(--icon-size);
+  block-size: var(--icon-size);
+  stroke-width: var(--icon-stroke);
+  flex-shrink: 0;
+}
+
+@utility icon-sm {
+  --icon-size: var(--icon-sm);
+  inline-size: var(--icon-size);
+  block-size: var(--icon-size);
+  stroke-width: var(--icon-stroke);
+  flex-shrink: 0;
+}
+
+@utility icon-md {
+  --icon-size: var(--icon-md);
+  inline-size: var(--icon-size);
+  block-size: var(--icon-size);
+  stroke-width: var(--icon-stroke);
+  flex-shrink: 0;
+}
+
+@utility icon-lg {
+  --icon-size: var(--icon-lg);
+  inline-size: var(--icon-size);
+  block-size: var(--icon-size);
+  stroke-width: var(--icon-stroke);
+  flex-shrink: 0;
+}
+
+@utility icon-xl {
+  --icon-size: var(--icon-xl);
+  inline-size: var(--icon-size);
+  block-size: var(--icon-size);
+  stroke-width: var(--icon-stroke);
+  flex-shrink: 0;
+}
+
+@utility icon-2xl {
+  --icon-size: var(--icon-2xl);
+  inline-size: var(--icon-size);
+  block-size: var(--icon-size);
+  stroke-width: var(--icon-stroke);
+  flex-shrink: 0;
+}
+
+/* ── Section rhythm (theme --spacing-* keys can't hold var()/clamp()) ───── */
+@utility pt-section {
+  padding-block-start: var(--space-section);
+}
+
+@utility pb-section {
+  padding-block-end: var(--space-section);
+}
+
+@utility py-section {
+  padding-block: var(--space-section);
+}
+
+@utility px-gutter {
+  padding-inline: var(--space-gutter);
+}
+
+@utility gap-section {
+  row-gap: var(--space-section);
+}
+
+/* ── Durations (same reason as above) ───────────────────────────────────── */
+@utility duration-fast {
+  transition-duration: var(--dur-fast);
+}
+
+@utility duration-base {
+  transition-duration: var(--dur-base);
+}
+
+@utility duration-slow {
+  transition-duration: var(--dur-slow);
+}
+
+@utility duration-slower {
+  transition-duration: var(--dur-slower);
+}
+
+/* ── Layout helpers ─────────────────────────────────────────────────────── */
+@utility container-page {
+  margin-inline: auto;
+  width: 100%;
+  max-width: 76rem;
+  padding-inline: var(--space-gutter);
+}
+
+/* Section vertical rhythm */
+@utility section-y {
+  padding-block: var(--space-section);
+}
+
+/* ── Typography helpers ─────────────────────────────────────────────────── */
+/* All micro-labels in the product share one size: `--fs-micro` (11px). */
+@utility eyebrow {
+  font-size: var(--fs-micro);
+  font-weight: 500;
+  letter-spacing: var(--ls-caps);
+  text-transform: uppercase;
+  color: var(--ink-tertiary); /* raw token — theme key is --color-ink-faint */
+}

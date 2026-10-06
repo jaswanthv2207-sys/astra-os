@@ -1,6 +1,7 @@
 import { dirname } from "path";
 import { fileURLToPath } from "url";
 import { FlatCompat } from "@eslint/eslintrc";
+import prettier from "eslint-config-prettier";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -20,6 +21,9 @@ const eslintConfig = [
       "next-env.d.ts",
     ],
   },
+  /* Must stay last: disables stylistic rules that Prettier already owns, so
+     `eslint` and `prettier --check` can never disagree with each other. */
+  prettier,
 ];
 
 export default eslintConfig;

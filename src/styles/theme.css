@@ -1,0 +1,245 @@
+/* ==========================================================================
+   Astra OS · Tailwind v4 Theme Bridge
+   --------------------------------------------------------------------------
+   Maps raw tokens from `tokens.css` into Tailwind namespaces.
+   `@theme inline` inlines the raw var() into generated utilities, so
+   overriding a raw token (e.g. `.light { --palette-violet: … }`) restyles
+   every utility that uses it without rebuilding classes.
+
+   Namespace reference:
+     --color-*      → bg-*, text-*, border-*, fill-*, ring-*
+     --font-*       → font-*
+     --text-*       → text-<size> (with --text-*--line-height / --letter-spacing)
+     --spacing-*    → p-*, m-*, gap-*, space-* (scales off --spacing)
+     --radius-*     → rounded-*
+     --shadow-*     → shadow-*
+     --blur-*       → blur-*
+     --ease-*       → ease-*
+     --animate-*    → animate-*
+     --z-index-*    → z-*  (prefix is `--z-index`, not `--z`)
+   ========================================================================== */
+
+@theme inline {
+  /* ── Colour ───────────────────────────────────────────────────────────── */
+  /* Surfaces */
+  --color-void: var(--surface-void);
+  --color-canvas: var(--surface-base);
+  --color-raised: var(--surface-raised);
+  --color-overlay: var(--surface-overlay);
+  --color-highest: var(--surface-highest);
+  --color-glass: var(--surface-glass);
+  --color-glass-strong: var(--surface-glass-strong);
+
+  /* Borders */
+  --color-hairline: var(--border-hairline);
+  --color-line: var(--border-subtle);
+  --color-line-strong: var(--border-strong);
+  --color-line-aura: var(--border-aura);
+
+  /* Ink */
+  --color-ink: var(--ink-primary);
+  --color-ink-muted: var(--ink-secondary);
+  --color-ink-faint: var(--ink-tertiary);
+  --color-ink-ghost: var(--ink-quaternary);
+  --color-ink-inverse: var(--ink-inverse);
+  --color-on-aura: var(--ink-on-aura);
+
+  /* Aura hues */
+  --color-aura-violet: var(--palette-violet);
+  --color-aura-violet-soft: var(--palette-violet-soft);
+  --color-aura-indigo: var(--palette-indigo);
+  --color-aura-blue: var(--palette-blue);
+  --color-aura-cyan: var(--palette-cyan);
+  --color-aura-teal: var(--palette-teal);
+  --color-aura-fuchsia: var(--palette-fuchsia);
+  --color-aura-rose: var(--palette-rose);
+
+  /* Semantic */
+  --color-success: var(--semantic-success);
+  --color-success-dim: var(--semantic-success-dim);
+  --color-warning: var(--semantic-warning);
+  --color-warning-dim: var(--semantic-warning-dim);
+  --color-danger: var(--semantic-danger);
+  --color-danger-dim: var(--semantic-danger-dim);
+  --color-info: var(--semantic-info);
+  --color-info-dim: var(--semantic-info-dim);
+
+  /* Aliases (template compatibility + `bg-background` idiom) */
+  --color-background: var(--surface-base);
+  --color-foreground: var(--ink-primary);
+
+  /* ── Typography ───────────────────────────────────────────────────────── */
+  --text-micro: var(--fs-micro);
+  --text-micro--line-height: var(--lh-micro);
+
+  --font-sans: var(--ui-font-sans);
+  --font-mono: var(--ui-font-mono);
+
+  --text-display: var(--fs-display);
+  --text-display--line-height: var(--lh-display);
+  --text-display--letter-spacing: var(--ls-display);
+
+  --text-hero: var(--fs-hero);
+  --text-hero--line-height: var(--lh-hero);
+  --text-hero--letter-spacing: var(--ls-hero);
+
+  --text-title: var(--fs-title);
+  --text-title--line-height: var(--lh-title);
+  --text-title--letter-spacing: var(--ls-title);
+
+  --text-subtitle: var(--fs-subtitle);
+  --text-subtitle--line-height: var(--lh-subtitle);
+  --text-subtitle--letter-spacing: var(--ls-subtitle);
+
+  --text-lead: var(--fs-lead);
+  --text-lead--line-height: var(--lh-body);
+
+  --tracking-display: var(--ls-display);
+  --tracking-title: var(--ls-title);
+  --tracking-caps: var(--ls-caps);
+
+  /* ── Spacing ──────────────────────────────────────────────────────────── */
+  /* Base multiplier for the whole numeric scale (p-4 → calc(var(--spacing) * 4)).
+     NOTE: named --spacing-* / --duration-* theme keys do NOT accept var()
+     values (Tailwind resolves them statically at build time), and our tokens
+     hold clamp()/var(). Those are therefore exposed as @utility rules in
+     components.css, which emit declarations verbatim. */
+  --spacing: var(--spacing-unit);
+
+  /* ── Radius ───────────────────────────────────────────────────────────── */
+  --radius-xs: var(--r-xs);
+  --radius-sm: var(--r-sm);
+  --radius-md: var(--r-md);
+  --radius-lg: var(--r-lg);
+  --radius-xl: var(--r-xl);
+  --radius-2xl: var(--r-2xl);
+  --radius-3xl: var(--r-3xl);
+  --radius-4xl: var(--r-4xl);
+  --radius-glass: var(--r-glass);
+  --radius-pill: var(--r-pill);
+
+  /* ── Shadows ──────────────────────────────────────────────────────────── */
+  --shadow-xs: var(--elev-xs);
+  --shadow-sm: var(--elev-sm);
+  --shadow-md: var(--elev-md);
+  --shadow-lg: var(--elev-lg);
+  --shadow-xl: var(--elev-xl);
+  --shadow-glass: var(--glass-shadow);
+  --shadow-inner-highlight: var(--inner-highlight);
+  --shadow-glow-violet: var(--glow-violet);
+  --shadow-glow-cyan: var(--glow-cyan);
+  --shadow-glow-aura: var(--glow-aura);
+  --shadow-glow-soft: var(--glow-soft);
+  --shadow-glow-danger: var(--glow-danger);
+  --shadow-glow-dot: var(--glow-dot);
+  --shadow-glow-dot-current: var(--glow-dot-current);
+  --shadow-ring-aura: var(--ring-aura);
+  --shadow-ring-danger: var(--ring-danger);
+
+  /* ── Blur ─────────────────────────────────────────────────────────────── */
+  --blur-glass: var(--glass-blur);
+  --blur-glass-lg: var(--glass-blur-lg);
+  --blur-glass-xl: var(--glass-blur-xl);
+
+  /* ── Motion ───────────────────────────────────────────────────────────── */
+  --ease-out-expo: var(--motion-out-expo);
+  --ease-out-quart: var(--motion-out-quart);
+  --ease-spring: var(--motion-spring);
+  --ease-smooth: var(--motion-smooth);
+
+  --animate-float: var(--anim-float);
+  --animate-pulse-glow: var(--anim-pulse-glow);
+  --animate-aurora: var(--anim-aurora);
+  --animate-shimmer: var(--anim-shimmer);
+  --animate-fade-up: var(--anim-fade-up);
+  --animate-spin-slow: var(--anim-spin-slow);
+  --animate-time-drift: var(--anim-time-drift);
+
+  /* ── Layers ───────────────────────────────────────────────────────────── */
+  /* NB: the `z-<name>` utility resolves keys under `--z-index-*` (the theme
+     key prefix is `--z-index`, not `--z`) — `--z-raised` would generate no
+     CSS at all and silently drop the layer. */
+  --z-index-base: var(--layer-base);
+  --z-index-raised: var(--layer-raised);
+  --z-index-sticky: var(--layer-sticky);
+  --z-index-overlay: var(--layer-overlay);
+  --z-index-modal: var(--layer-modal);
+  --z-index-popover: var(--layer-popover);
+  --z-index-toast: var(--layer-toast);
+  --z-index-tooltip: var(--layer-tooltip);
+  --z-index-grain: var(--layer-grain);
+  --z-index-launch: var(--layer-launch);
+}
+
+/* ── Keyframes (referenced by --anim-* shorthands) ───────────────────────── */
+@keyframes float {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(0, -14px, 0);
+  }
+}
+
+@keyframes pulse-glow {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.04);
+  }
+}
+
+@keyframes aurora {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 100% 50%;
+  }
+}
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 16px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes spin-slow {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Time-travel streaks — light lines sweeping down the viewport while the
+   knowledge timeline is being scrubbed (see universe-timeline.tsx). The
+   global reduced-motion clamp freezes this to a single imperceptible pass. */
+@keyframes time-drift {
+  0% {
+    transform: translate3d(0, -45vh, 0);
+    opacity: 0;
+  }
+  12%,
+  88% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate3d(0, 45vh, 0);
+    opacity: 0;
+  }
+}
