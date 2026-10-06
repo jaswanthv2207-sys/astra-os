@@ -36,6 +36,7 @@ import type { UniverseRecord } from "@/types/workspace";
 
 import { ManagerSidebar } from "./manager-sidebar";
 import { UniverseCard } from "./universe-card";
+import { WorkspaceStats } from "./workspace-stats";
 import {
   formatBytes,
   recordBytes,
@@ -215,6 +216,7 @@ export function UniverseManager() {
   const [folderId, setFolderId] = React.useState<string | null>(null);
   const [search, setSearch] = React.useState("");
   const [creating, setCreating] = React.useState(false);
+  const [statsOpen, setStatsOpen] = React.useState(false);
   const [renaming, setRenaming] = React.useState<UniverseRecord | null>(null);
   const [renameDraft, setRenameDraft] = React.useState("");
   const [deleting, setDeleting] = React.useState<UniverseRecord | null>(null);
@@ -467,6 +469,19 @@ export function UniverseManager() {
             >
               Local backup
             </Button>
+            <WorkspaceStats
+              open={statsOpen}
+              onOpenChange={setStatsOpen}
+              trigger={
+                <Button
+                  variant="glass"
+                  size="xs"
+                  iconLeft={<Icon name="chart" />}
+                >
+                  Stats
+                </Button>
+              }
+            />
 
             <div className="ml-auto flex items-center gap-2">
               <span className="text-ink-ghost font-mono text-[10px]">
