@@ -28,12 +28,12 @@ public/               # Statically served files (favicon, robots, og-images)
 
 ## Routes
 
-| Route            | Purpose                                                                                                      |
-| ---------------- | ------------------------------------------------------------------------------------------------------------ |
-| `/`              | Landing page: cinematic hero, stats, capabilities, how-it-works, waitlist CTA                                |
-| `/design-system` | Live style guide: colour, type, spacing, icons, radius, shadow, motion                                       |
-| `/components`    | Component gallery: every primitive with states and usage snippets                                            |
-| `/universe`      | Immersive 3D experience: orbiting planets, energy beams, galaxies + HUD, AI search, Astra assistant, dossier |
+| Route            | Purpose                                                                                                     |
+| ---------------- | ----------------------------------------------------------------------------------------------------------- |
+| `/`              | Landing page: cinematic hero, stats, capabilities, how-it-works, waitlist CTA                               |
+| `/design-system` | Live style guide: colour, type, spacing, icons, radius, shadow, motion                                      |
+| `/components`    | Component gallery: every primitive with states and usage snippets                                           |
+| `/universe`      | Immersive 3D experience: orbiting planets, energy beams, galaxies + HUD, Astra assistant, dossier, timeline |
 
 The landing hero's **Launch Universe** button enters `/universe` through a
 cinematic warp overlay (`components/shared/launch-transition.tsx`, phase machine
@@ -125,35 +125,32 @@ Related worlds re-key the panel (`AnimatePresence mode="wait"`) so the camera
 glide and the panel slide read as one move; under `prefers-reduced-motion`
 both cut instantly. The hover card is suppressed while its world is focused.
 
-Floating above the scene, `universe-search.tsx` is an ARIA combobox ("Ask
-Astra…") that understands natural language — _"Show all AI projects"_,
-_"Find projects using Fast API"_, _"Open my latest hackathon project"_ — with
-three suggestion chips (click runs them immediately), a `/` focus shortcut and
-a polite live response line stating the outcome. **Parsing** is pure and local
-(`search-query.ts`): tag phrases (`ai`, `hackathon`, …), per-project stack
-regexes that join characters with `[\s._/-]*` so `FastAPI` matches `fast api`,
-recency words (`latest`, `newest`, …), then weighted title/tag/summary text
-scoring with a stopword list; structured layers combine as AND, structured
-results sort by `updatedAt` desc, text hits by score then recency. An `open`
-verb — or exactly one hit — commits as _open_, otherwise as _frame_.
+Floating above the scene, Astra alone is the ask surface: her replies
+parse natural language through the pure local layer `search-query.ts` —
+tag phrases (`ai`, `hackathon`, …), per-project stack regexes that join
+characters with `[\s._/-]*` so `FastAPI` matches `fast api`, recency words
+(`latest`, `newest`, …), then weighted title/tag/summary text scoring with a
+stopword list; structured layers combine as AND, structured results sort by
+`updatedAt` desc, text hits by score then recency. An `open` verb — or
+exactly one hit — resolves to _open_, everything else to _frame_.
 
-**Search state** lives in `stores/search-store.ts`, read only through the
-granular selectors in `hooks/use-search.ts` (bar → `useSearch()`, shell →
-`useSearchText()`, planets/beams → `useSearchMatches()`, camera →
+**Reveal state** lives in `stores/search-store.ts`, read only through the
+granular selectors in `hooks/use-search.ts` (Astra's panel → `useSearch()`,
+shell → `useSearchClear()`, planets/beams → `useSearchMatches()`, camera →
 `useSearchFrame()`). `matchedIds` drives the scene: matched planets glow to
 1.15× while every other world eases to a 0.22 `uFade` (labels ghost to the
 same opacity, hover cards suppress), and each beam's per-link weight eases to
 0.5 per matched endpoint — so connections touching results blaze while
-unrelated links recede. Committing **collapses the result list** so the camera
-reveal owns the stage; typing or `↓ results` brings it back. A frame commit
-plans one _reveal_ warp in `camera-rig.tsx` — centroid of the matched set,
+unrelated links recede. A frame commit plans one _reveal_ warp in
+`camera-rig.tsx` — centroid of the matched set,
 `distance = clamp(reach × 2.4 + 14, 26, 150)`, run over
 `clamp(0.95 + travel / 160, 1.05, 1.55)`s — snapshotting the overview for the
 warp back. Intent priority stays **focus → frame → overview**, each planned once
-per `intentKey`. Escape ordering in `universe-experience.tsx`: active query
-clears first, then a focused dossier releases, then the route exits (a
-timeline parked in the past snaps to the present just before), and
-remounting clears any stale search state.
+per `intentKey`. Escape ordering in `universe-experience.tsx`: the Astra
+conversation closes first, then a committed results frame clears, then a
+focused dossier releases, then the route exits (a timeline parked in the past
+snaps to the present just before), and remounting clears any stale reveal
+state.
 
 The lower-right corner belongs to **Astra**, the OS assistant
 (`universe-assistant.tsx`, imported as its own lazy `dynamic()` chunk so the
@@ -167,8 +164,8 @@ the HUD settles). **Replies** come from a pure local engine
 (`assistant-reply.ts`): conversational layers first — greeting, help,
 identity, then world-scoped questions (`What powers X`, `Show worlds linked
 to X`, `Summarise X`, with pronouns falling back to the focused world) —
-before delegating universe queries to the same `parseQuery` the search bar
-uses, so both surfaces agree on what "latest" or "Fast API" means. Thinking
+before delegating universe queries to the shared `parseQuery` layer, so
+every ask resolves the same way. Thinking
 renders a staggered gradient **waveform** (pending bubble + header, static
 under reduced motion) and swaps the status line to `reasoning…`. A reply
 with a `run` executes the camera move — `focus` mirrors an open commit

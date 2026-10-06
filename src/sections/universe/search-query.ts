@@ -1,13 +1,14 @@
 import { PROJECTS, type Project } from "@/data";
 
 /* ────────────────────────────────────────────────────────────────────────── *
- * search-query — the local "understanding" layer behind the floating search.
+ * search-query — the local "understanding" layer behind Astra's asks.
  *
  * A query is parsed in priority order — technologies, then classification
  * tags, then recency, then a loose keyword fallback — so natural phrasings
  * like "Show all AI projects", "Find projects using Fast API" or "Open my
  * latest hackathon project" all resolve to a set of worlds without a network
- * round-trip. Pure functions only: the UI owns state, this owns meaning.
+ * round-trip. Pure functions only: the assistant owns state, this owns
+ * meaning.
  * ────────────────────────────────────────────────────────────────────────── */
 
 export type SearchReason =

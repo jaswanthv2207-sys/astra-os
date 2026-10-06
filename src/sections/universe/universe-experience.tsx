@@ -7,7 +7,7 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 
 import { Button, Icon } from "@/components";
 import { useAssistantOpen } from "@/hooks/use-assistant";
-import { useSearchFrame, useSearchText } from "@/hooks/use-search";
+import { useSearchClear, useSearchFrame } from "@/hooks/use-search";
 import {
   readTimelineDate,
   readTimelineNow,
@@ -17,7 +17,6 @@ import { useUniverse } from "@/hooks/use-universe";
 import { cn } from "@/lib/utils";
 
 import { UniverseHud } from "./universe-hud";
-import { UniverseSearch } from "./universe-search";
 import { ProjectDetailPanel } from "./project-detail-panel";
 
 /* ────────────────────────────────────────────────────────────────────────── *
@@ -99,7 +98,7 @@ export function UniverseExperience() {
   const router = useRouter();
   const reduce = useReducedMotion();
   const { focusedId, release } = useUniverse();
-  const { query, clear: clearSearch } = useSearchText();
+  const clearSearch = useSearchClear();
   const frameIds = useSearchFrame();
   const hasFrame = frameIds !== null;
   const { open: assistantOpen, close: closeAssistant } = useAssistantOpen();
@@ -151,31 +150,16 @@ export function UniverseExperience() {
   React.useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
-      // Escape unwinds one layer at a time: the Astra conversation first
-      // when focus is inside it (or nothing else is pending), then an
-      // active search, then the conversation itself, then a results frame
-      // Astra set without query text, then a focused world, then a
+      // Escape unwinds one layer at a time: the Astra conversation first,
+      // then a results frame Astra revealed, then a focused world, then a
       // timeline parked in the past (back to the present) — and only an
       // untouched universe exits to the surface.
-      const target = event.target;
-      const inAssistant =
-        target instanceof HTMLElement &&
-        Boolean(target.closest("[data-astra-assistant]"));
-      if (assistantOpen && (!query || inAssistant)) {
-        closeAssistant();
-        return;
-      }
-      if (query) {
-        clearSearch();
-        return;
-      }
       if (assistantOpen) {
         closeAssistant();
         return;
       }
       if (hasFrame) {
-        // Astra's reveals frame results without query text — clear the same
-        // way a search commit would (matches + frame + query).
+        // Astra's reveal commits matches + frame together — clear both.
         clearSearch();
         return;
       }
@@ -200,11 +184,10 @@ export function UniverseExperience() {
     exit,
     focusedId,
     hasFrame,
-    query,
     release,
   ]);
 
-  /* A focus (or search) must never leak into a fresh visit of /universe
+  /* A focus (or reveal) must never leak into a fresh visit of /universe
      (browser back/forward remounts this page without going through exit()).
      Guarded on mount — deliberately NOT an unmount cleanup: poking the store
      while React is deleting the subtree races the commit. */
@@ -213,7 +196,7 @@ export function UniverseExperience() {
     if (!firstVisit.current) return;
     firstVisit.current = false;
     if (focusedId) release();
-    if (query || hasFrame) clearSearch();
+    if (hasFrame) clearSearch();
     if (assistantOpen) closeAssistant();
     if (readTimelineDate() < readTimelineNow()) resetTimeline();
   }, [
@@ -222,7 +205,6 @@ export function UniverseExperience() {
     closeAssistant,
     focusedId,
     hasFrame,
-    query,
     release,
   ]);
 
@@ -340,9 +322,6 @@ export function UniverseExperience() {
 
       {/* ── HUD (stays mounted; the exit curtain covers it) ────────────── */}
       {showScene && <UniverseHud onExit={exit} ready={showScene} />}
-
-      {/* ── floating AI search (natural language over the whole graph) ─── */}
-      {showScene && <UniverseSearch />}
 
       {/* ── Astra — the assistant orb + conversational panel ───────────── */}
       {showScene && <UniverseAssistant />}

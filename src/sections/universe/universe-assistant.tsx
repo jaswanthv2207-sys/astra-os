@@ -521,7 +521,7 @@ export function UniverseAssistant() {
   const seq = React.useRef(0);
   const nextId = React.useCallback(() => `${uid}-${(seq.current += 1)}`, [uid]);
 
-  /** Execute a camera move: mirrors the search bar's commit semantics. */
+  /** Execute a camera move: mirrors a reveal commit's semantics. */
   const execute = React.useCallback(
     (action: { kind: "focus" | "frame"; ids: readonly string[] }) => {
       if (action.kind === "focus") {

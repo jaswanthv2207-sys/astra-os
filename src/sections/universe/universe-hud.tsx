@@ -254,8 +254,7 @@ export function UniverseHud({
             {focusedProject ? "return to orbit" : "return to surface"}
           </p>
           <p className="text-ink-faint text-micro font-mono opacity-70">
-            drag · scroll · <span className="text-aura-violet-soft">/</span>{" "}
-            search · click a world
+            drag · scroll · click a world
           </p>
           <p className="text-ink-faint text-micro font-mono opacity-70">
             <span className="text-aura-violet-soft">✦</span> ask Astra — bottom
