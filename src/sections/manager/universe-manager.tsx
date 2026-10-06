@@ -234,6 +234,14 @@ export function UniverseManager() {
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
   );
 
+  /* The command palette opens the creation flow by event — the HUD listens
+     for the same one on /universe, and only the mounted route responds. */
+  React.useEffect(() => {
+    const onCreate = () => setCreating(true);
+    window.addEventListener("astra:new-universe", onCreate);
+    return () => window.removeEventListener("astra:new-universe", onCreate);
+  }, []);
+
   /* ── actions ──────────────────────────────────────────────────────── */
 
   const openRecord = (record: UniverseRecord) => {

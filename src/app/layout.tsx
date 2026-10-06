@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
 import { LaunchTransition } from "@/components/shared";
+import { CommandPalette } from "@/sections/shared/command-palette";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -42,6 +43,8 @@ export default function RootLayout({
       >
         {children}
         <LaunchTransition />
+        {/* App-wide ⌘K surface — mounts on every route. */}
+        <CommandPalette />
       </body>
     </html>
   );

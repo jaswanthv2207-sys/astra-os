@@ -98,6 +98,14 @@ export function UniverseHud({
     return () => window.removeEventListener("astra:map-toggle", onToggle);
   }, []);
 
+  /* …and asks for the creation flow the same way (palette → "Create a new
+     universe"). The manager listens for the identical event on its route. */
+  React.useEffect(() => {
+    const onCreate = () => setCreating(true);
+    window.addEventListener("astra:new-universe", onCreate);
+    return () => window.removeEventListener("astra:new-universe", onCreate);
+  }, []);
+
   /* Rotate the signal log — one line swaps every 2.6s. */
   React.useEffect(() => {
     if (reduce) return;

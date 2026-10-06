@@ -107,7 +107,7 @@ function starCountForViewport(): number {
 export function UniverseExperience() {
   const router = useRouter();
   const reduce = useReducedMotion();
-  const { focusedId, release } = useUniverse();
+  const { focusedId, focus, release } = useUniverse();
   const clearSearch = useSearchClear();
   const frameIds = useSearchFrame();
   const hasFrame = frameIds !== null;
@@ -246,13 +246,25 @@ export function UniverseExperience() {
     if (hasFrame) clearSearch();
     if (assistantOpen) closeAssistant();
     if (readTimelineDate() < readTimelineNow()) resetTimeline();
+    /* …unless the visit *asks* for a world: the command palette deep-links
+       `?world=<id>` when it's invoked from another route. Applied after the
+       reset above, then consumed with a same-route replace so back/forward
+       and reloads never re-trigger the focus (the guard's intent stands). */
+    const worldId = new URLSearchParams(window.location.search).get("world");
+    if (worldId !== null && scene.projects.some((p) => p.id === worldId)) {
+      focus(worldId);
+      router.replace("/universe", { scroll: false });
+    }
   }, [
     assistantOpen,
     clearSearch,
     closeAssistant,
     focusedId,
+    focus,
     hasFrame,
     release,
+    router,
+    scene,
   ]);
 
   /* Lock scroll — the universe is a fixed viewport.
