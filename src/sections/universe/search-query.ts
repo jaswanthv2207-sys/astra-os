@@ -310,13 +310,15 @@ export function parseQuery(raw: string): SearchIntent | null {
       .replace(/[^a-z0-9\s+#.-]/g, " ")
       .split(/\s+/)
       .filter((word) => word.length >= 2 && !STOPWORDS.has(word));
-    const scored = projects.map((project) => ({
-      project,
-      score: terms.reduce(
-        (total, term) => total + (haystack(project).includes(term) ? 1 : 0),
-        0,
-      ),
-    })).filter((entry) => entry.score > 0);
+    const scored = projects
+      .map((project) => ({
+        project,
+        score: terms.reduce(
+          (total, term) => total + (haystack(project).includes(term) ? 1 : 0),
+          0,
+        ),
+      }))
+      .filter((entry) => entry.score > 0);
     scored.sort(
       (a, b) =>
         b.score - a.score ||

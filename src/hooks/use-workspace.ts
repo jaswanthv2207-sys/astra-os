@@ -46,7 +46,9 @@ export function useWorkspaceHydrated(): boolean {
 
 /* ── universes ─────────────────────────────────────────────────────────── */
 
-export function useUniverses(options?: { includeArchived?: boolean }): UniverseRecord[] {
+export function useUniverses(options?: {
+  includeArchived?: boolean;
+}): UniverseRecord[] {
   const includeArchived = options?.includeArchived ?? false;
   /* Shallow-compares the derived array — a fresh filter result per call
      would otherwise trip useSyncExternalStore's snapshot loop guard. */
@@ -63,7 +65,9 @@ export function useUniverseRecord(
   id: string | null | undefined,
 ): UniverseRecord | null {
   return useWorkspaceStore((state) =>
-    id ? (state.universes.find((universe) => universe.id === id) ?? null) : null,
+    id
+      ? (state.universes.find((universe) => universe.id === id) ?? null)
+      : null,
   );
 }
 
@@ -75,9 +79,7 @@ export function useUniverseRecord(
 export function useActiveUniverseRecord(): UniverseRecord | null {
   return useWorkspaceStore((state) => {
     if (!state.activeUniverseId) return null;
-    return (
-      state.universes.find((u) => u.id === state.activeUniverseId) ?? null
-    );
+    return state.universes.find((u) => u.id === state.activeUniverseId) ?? null;
   });
 }
 
@@ -101,8 +103,8 @@ export function useNotifications(): WorkspaceNotification[] {
 }
 
 export function useUnreadCount(): number {
-  return useWorkspaceStore(
-    (state) => state.notifications.reduce((n, item) => (item.read ? n : n + 1), 0),
+  return useWorkspaceStore((state) =>
+    state.notifications.reduce((n, item) => (item.read ? n : n + 1), 0),
   );
 }
 
@@ -158,9 +160,10 @@ export function usePlanetWorkspace(
 }
 
 /** Task counts per planet for one universe (manager cards + HUD badges). */
-export function useTaskSummary(
-  universeId: string | null,
-): { total: number; done: number } {
+export function useTaskSummary(universeId: string | null): {
+  total: number;
+  done: number;
+} {
   return useWorkspaceStore(
     useShallow((state) => {
       const record = universeId

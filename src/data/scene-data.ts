@@ -147,7 +147,9 @@ export function buildUniverseScene(record: UniverseRecord): SceneData {
       ...project,
       name: meta.name ?? project.name,
       progress:
-        typeof meta.completion === "number" ? meta.completion : project.progress,
+        typeof meta.completion === "number"
+          ? meta.completion
+          : project.progress,
       links: {
         repo: meta.repo ?? project.links.repo,
         demo: project.links.demo,

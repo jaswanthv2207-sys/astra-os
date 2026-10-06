@@ -132,7 +132,8 @@ export function UniverseCard({
   };
 
   const cover = record.cover || fallbackCover(record.seed);
-  const isGradient = cover.startsWith("linear-gradient") || cover.startsWith("radial");
+  const isGradient =
+    cover.startsWith("linear-gradient") || cover.startsWith("radial");
   const coverStyle: React.CSSProperties = isGradient
     ? { background: cover }
     : { backgroundImage: `url("${cover}")` };

@@ -235,7 +235,14 @@ function seedPlanetData(record: UniverseRecord): UniverseRecord {
     planetActivity[planetId] = generatePlanetActivity(record, planetId);
   }
 
-  return { ...record, planetMeta: meta, planetTasks, planetNotes, planetDocs, planetActivity };
+  return {
+    ...record,
+    planetMeta: meta,
+    planetTasks,
+    planetNotes,
+    planetDocs,
+    planetActivity,
+  };
 }
 
 /* ── debounced storage ─────────────────────────────────────────────────── */
@@ -310,7 +317,9 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       /** Immutable in-place update of one universe. */
       const patchUniverse = (
         id: string,
-        patch: Partial<UniverseRecord> | ((u: UniverseRecord) => Partial<UniverseRecord>),
+        patch:
+          | Partial<UniverseRecord>
+          | ((u: UniverseRecord) => Partial<UniverseRecord>),
       ) =>
         set((state) => ({
           universes: state.universes.map((universe) =>
@@ -364,7 +373,8 @@ export const useWorkspaceStore = create<WorkspaceState>()(
         /* ── universes ───────────────────────────────────────────────── */
 
         createUniverse: (form) => {
-          const now = Date.now();          const record: UniverseRecord = {
+          const now = Date.now();
+          const record: UniverseRecord = {
             id: `${slugBase(form.name)}-${now.toString(36)}`,
             name: form.name.trim() || "Untitled universe",
             description: form.description.trim(),
@@ -408,11 +418,14 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           }));
 
           const achievements = get().achievements;
-          if (!achievements.find((a) => a.id === "first-universe")?.unlockedAt) {
+          if (
+            !achievements.find((a) => a.id === "first-universe")?.unlockedAt
+          ) {
             get().unlockAchievement("first-universe");
           }
           if (get().universes.length >= 5) get().unlockAchievement("curator");
-          if (get().universes.length >= 10) get().unlockAchievement("collector");
+          if (get().universes.length >= 10)
+            get().unlockAchievement("collector");
           return seeded;
         },
 
@@ -502,7 +515,9 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           set((state) => ({
             folders: state.folders.filter((folder) => folder.id !== id),
             universes: state.universes.map((universe) =>
-              universe.folderId === id ? { ...universe, folderId: null } : universe,
+              universe.folderId === id
+                ? { ...universe, folderId: null }
+                : universe,
             ),
           })),
 
@@ -698,7 +713,9 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           const at = Date.now();
           set((state) => ({
             achievements: state.achievements.map((achievement) =>
-              achievement.id === id ? { ...achievement, unlockedAt: at } : achievement,
+              achievement.id === id
+                ? { ...achievement, unlockedAt: at }
+                : achievement,
             ),
             notifications: [
               {
@@ -784,11 +801,20 @@ export const useWorkspaceStore = create<WorkspaceState>()(
               universes?: UniverseRecord[];
               folders?: Folder[];
             };
-            if (parsed.kind !== "workspace" || !Array.isArray(parsed.universes)) {
-              return { ok: false, count: 0, error: "Not an Astra workspace file." };
+            if (
+              parsed.kind !== "workspace" ||
+              !Array.isArray(parsed.universes)
+            ) {
+              return {
+                ok: false,
+                count: 0,
+                error: "Not an Astra workspace file.",
+              };
             }
             const existing = new Set(get().universes.map((u) => u.id));
-            const incoming = parsed.universes.filter((u) => u && u.id && !existing.has(u.id));
+            const incoming = parsed.universes.filter(
+              (u) => u && u.id && !existing.has(u.id),
+            );
             if (incoming.length === 0) {
               return { ok: false, count: 0, error: "Nothing new to import." };
             }

@@ -29,7 +29,15 @@ import type {
   ProjectStat,
 } from "@/data";
 import type { IconName } from "@/lib/icons";
-import { chance, float, int, pick, rngFrom, shuffle, slugify } from "@/lib/prng";
+import {
+  chance,
+  float,
+  int,
+  pick,
+  rngFrom,
+  shuffle,
+  slugify,
+} from "@/lib/prng";
 import type {
   PlanetActivity,
   PlanetDocument,
@@ -438,7 +446,10 @@ export function generateScene(record: UniverseRecord): GeneratedScene {
     const accent = mix(theme.accent, theme.accent2, float(rng, 0, 1));
     const deep = shade(mix(accent, "#0a0a18", 0.72), 0.9);
     const mid = mix(accent, shade(accent, 0.4), float(rng, 0.35, 0.65));
-    const bright = shade(mix(accent, theme.accent2, 0.3), 1.55 + hueShift * 0.004);
+    const bright = shade(
+      mix(accent, theme.accent2, 0.3),
+      1.55 + hueShift * 0.004,
+    );
     const atmosphere = shade(accent, 1.25);
 
     const planet: ProjectPlanet = {
@@ -451,7 +462,8 @@ export function generateScene(record: UniverseRecord): GeneratedScene {
       atmosphere,
       bands: Math.min(1, Math.max(0, style.bands + float(rng, -0.12, 0.12))),
       seed: int(rng, 1, 9999),
-      spin: float(rng, style.spin[0], style.spin[1]) * (chance(rng, 0.25) ? -1 : 1),
+      spin:
+        float(rng, style.spin[0], style.spin[1]) * (chance(rng, 0.25) ? -1 : 1),
       tilt: float(rng, 0.06, 0.52),
     };
 
@@ -462,7 +474,8 @@ export function generateScene(record: UniverseRecord): GeneratedScene {
     const milestoneCount = int(rng, 3, 5);
     const timeline: ProjectMilestone[] = [];
     for (let m = 0; m < milestoneCount; m++) {
-      const [label] = MILESTONE_LABELS[Math.min(m, MILESTONE_LABELS.length - 1)];
+      const [label] =
+        MILESTONE_LABELS[Math.min(m, MILESTONE_LABELS.length - 1)];
       const daysAgo = Math.round(ageDays - (ageDays * m) / milestoneCount);
       const status: "done" | "planned" =
         m === 0
@@ -487,7 +500,8 @@ export function generateScene(record: UniverseRecord): GeneratedScene {
       Math.min(
         97,
         Math.round(
-          (timeline.filter((t) => t.status === "done").length / timeline.length) *
+          (timeline.filter((t) => t.status === "done").length /
+            timeline.length) *
             100 +
             float(rng, -8, 10),
         ),
@@ -516,7 +530,9 @@ export function generateScene(record: UniverseRecord): GeneratedScene {
         record.description || "It keeps the surrounding systems honest."
       } The surface is deliberately small: ${stack
         .slice(0, 3)
-        .join(", ")} underneath, one clear API above, and telemetry on every path.`,
+        .join(
+          ", ",
+        )} underneath, one clear API above, and telemetry on every path.`,
       stats: shuffle(rng, STAT_POOL)
         .slice(0, 4)
         .map((s) => ({
@@ -529,14 +545,20 @@ export function generateScene(record: UniverseRecord): GeneratedScene {
       architecture: [
         { name: "Edge", detail: `${stack[0]} termination with tenant auth.` },
         { name: "Service", detail: `${module} logic with structured traces.` },
-        { name: "Data", detail: `${stack[2] ?? "Postgres"} storage + read model.` },
+        {
+          name: "Data",
+          detail: `${stack[2] ?? "Postgres"} storage + read model.`,
+        },
       ] satisfies ProjectLayer[],
       timeline,
       related: [],
       shots: shuffle(rng, SHOT_POOL)
         .slice(0, int(rng, 2, 3))
         .map((s) => ({ ...s })),
-      links: { repo, demo: `https://${slugify(record.name) || "universe"}.app/${moduleId}` },
+      links: {
+        repo,
+        demo: `https://${slugify(record.name) || "universe"}.app/${moduleId}`,
+      },
       stack,
       tags: [...record.tags.slice(0, 3), module.toLowerCase()].filter(
         (t, i, a) => a.indexOf(t) === i,
@@ -591,7 +613,14 @@ export function generateScene(record: UniverseRecord): GeneratedScene {
 
   const starTint = mix(theme.accent2, "#ffffff", 0.55);
   const sectorNumber = String(int(rng, 2, 48)).padStart(2, "0");
-  const sectorWord = pick(rng, ["Reach", "Arc", "Drift", "Halo", "Expanse", "Rift"]);
+  const sectorWord = pick(rng, [
+    "Reach",
+    "Arc",
+    "Drift",
+    "Halo",
+    "Expanse",
+    "Rift",
+  ]);
 
   return {
     projects,
@@ -606,7 +635,9 @@ export function generateScene(record: UniverseRecord): GeneratedScene {
 /* ── Per-planet workspace data ────────────────────────────────────────────── */
 
 /** Deterministic default workspace metadata for every generated planet. */
-export function generatePlanetMeta(record: UniverseRecord): Record<string, PlanetMeta> {
+export function generatePlanetMeta(
+  record: UniverseRecord,
+): Record<string, PlanetMeta> {
   const out: Record<string, PlanetMeta> = {};
   const { projects } = generateScene(record);
   for (const project of projects) {
@@ -687,7 +718,10 @@ export function generatePlanetActivity(
     .map((text, i) => ({
       id: `${planetId}-act-${i}`,
       planetId,
-      text: text.replace("{n}", String(int(rng, 1, 4))).replace("{minor}", String(int(rng, 0, 9))).replace("{patch}", String(int(rng, 0, 20))),
+      text: text
+        .replace("{n}", String(int(rng, 1, 4)))
+        .replace("{minor}", String(int(rng, 0, 9)))
+        .replace("{patch}", String(int(rng, 0, 20))),
       at: Date.now() - int(rng, 1, 45) * 86_400_000,
     }));
 }
@@ -838,12 +872,13 @@ export function simulateRepo(repo: string, seedKey: string): RepoSimulation {
       99,
       passRate * 0.5 +
         float(rng, 20, 45) +
-        (pullRequests.filter((p) => p.state === "merged").length * 3),
+        pullRequests.filter((p) => p.state === "merged").length * 3,
     ),
   );
 
   const counts = new Map<string, number>();
-  for (const c of commits) counts.set(c.author, (counts.get(c.author) ?? 0) + 1);
+  for (const c of commits)
+    counts.set(c.author, (counts.get(c.author) ?? 0) + 1);
   const contributors = [...counts.entries()]
     .sort((a, b) => b[1] - a[1])
     .slice(0, 6)
@@ -909,15 +944,16 @@ export function computeInsights(
     const done = tasks.filter((t) => t.done).length;
     const workload = tasks.length;
     const completion = meta?.completion ?? project.progress;
-    const overdue =
-      meta?.dueAt != null && meta.dueAt < now && completion < 90;
+    const overdue = meta?.dueAt != null && meta.dueAt < now && completion < 90;
     const health = Math.round(
       Math.max(
         12,
         Math.min(
           98,
-          completion * 0.6 + (workload ? (done / workload) * 40 : 25) +
-            float(rng, -8, 8) - (overdue ? 22 : 0),
+          completion * 0.6 +
+            (workload ? (done / workload) * 40 : 25) +
+            float(rng, -8, 8) -
+            (overdue ? 22 : 0),
         ),
       ),
     );

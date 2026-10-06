@@ -286,13 +286,7 @@ export function ProjectDetailPanel({
   );
 }
 
-function Dossier({
-  project,
-  reduce,
-}: {
-  project: Project;
-  reduce: boolean;
-}) {
+function Dossier({ project, reduce }: { project: Project; reduce: boolean }) {
   const { focus, release } = useUniverse();
   const projects = useSceneProjects();
   const panelRef = React.useRef<HTMLElement>(null);

@@ -10,6 +10,7 @@ import { useUniverse } from "@/hooks/use-universe";
 import { cn } from "@/lib/utils";
 
 import { CreateUniverse, CreateUniverseButton } from "./create-universe";
+import { UniverseMinimap } from "./universe-minimap";
 
 /* ────────────────────────────────────────────────────────────────────────── *
  * UniverseHud — the futuristic-OS overlay floating over the 3D scene.
@@ -85,6 +86,17 @@ export function UniverseHud({
   const scene = useSceneData();
   const focusedProject = projects.find((project) => project.id === focusedId);
   const [creating, setCreating] = React.useState(false);
+  const [mapOpen, setMapOpen] = React.useState(false);
+  const mapTriggerRef = React.useRef<HTMLButtonElement>(null);
+
+  /* The command palette (and anything else on the page) flips the galaxy
+     map with one custom event — the HUD owns the open state so the trigger
+     can report `aria-expanded`. */
+  React.useEffect(() => {
+    const onToggle = () => setMapOpen((current) => !current);
+    window.addEventListener("astra:map-toggle", onToggle);
+    return () => window.removeEventListener("astra:map-toggle", onToggle);
+  }, []);
 
   /* Rotate the signal log — one line swaps every 2.6s. */
   React.useEffect(() => {
@@ -140,6 +152,20 @@ export function UniverseHud({
 
         <div className="flex items-center gap-2">
           <Button
+            ref={mapTriggerRef}
+            variant="glass"
+            size="sm"
+            aria-label="Open galaxy map"
+            aria-expanded={mapOpen}
+            aria-haspopup="dialog"
+            aria-keyshortcuts="M"
+            className="pointer-events-auto"
+            iconLeft={<Icon name="map" size="sm" label="" />}
+            onClick={() => setMapOpen((current) => !current)}
+          >
+            <span className="hidden md:inline">Map</span>
+          </Button>
+          <Button
             variant="glass"
             size="sm"
             aria-label="Open Universe Manager"
@@ -169,6 +195,11 @@ export function UniverseHud({
       </motion.header>
 
       <CreateUniverse open={creating} onOpenChange={setCreating} />
+      <UniverseMinimap
+        open={mapOpen}
+        onOpenChange={setMapOpen}
+        returnFocusRef={mapTriggerRef}
+      />
 
       {/* ── side rails ───────────────────────────────────────────────── */}
       <div className="flex min-h-0 flex-1 items-center justify-between gap-4 py-4">

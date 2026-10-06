@@ -259,6 +259,7 @@
   --anim-fade-up: fade-up 0.7s var(--motion-out-expo) both;
   --anim-spin-slow: spin-slow 14s linear infinite;
   --anim-time-drift: time-drift 1.5s linear infinite;
+  --anim-link-flow: link-flow 1.6s linear infinite;
 
   /* ── Layers (z-index) ─────────────────────────────────────────────────── */
   --layer-base: 0;

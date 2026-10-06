@@ -154,6 +154,7 @@
   --animate-fade-up: var(--anim-fade-up);
   --animate-spin-slow: var(--anim-spin-slow);
   --animate-time-drift: var(--anim-time-drift);
+  --animate-link-flow: var(--anim-link-flow);
 
   /* ── Layers ───────────────────────────────────────────────────────────── */
   /* NB: the `z-<name>` utility resolves keys under `--z-index-*` (the theme
@@ -241,5 +242,14 @@
   100% {
     transform: translate3d(0, 45vh, 0);
     opacity: 0;
+  }
+}
+
+/* Galaxy-map link beams — dashes marching along the graph edges (the map's
+   read of the scene's energy beams). Two dash periods per cycle so the
+   seam loops invisibly; the global reduced-motion clamp parks it. */
+@keyframes link-flow {
+  to {
+    stroke-dashoffset: -24;
   }
 }

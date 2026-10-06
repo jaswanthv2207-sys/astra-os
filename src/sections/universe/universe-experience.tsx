@@ -6,7 +6,11 @@ import { useRouter } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 
 import { Button, Icon } from "@/components";
-import { buildActiveScene, getSceneData, setSceneData } from "@/data/scene-data";
+import {
+  buildActiveScene,
+  getSceneData,
+  setSceneData,
+} from "@/data/scene-data";
 import { useAssistantOpen } from "@/hooks/use-assistant";
 import { useSearchClear, useSearchFrame } from "@/hooks/use-search";
 import { useSceneData } from "@/hooks/use-scene-data";
