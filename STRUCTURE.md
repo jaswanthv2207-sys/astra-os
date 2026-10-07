@@ -7,7 +7,8 @@ All imports use the `@/*` alias → `src/*`.
 src/
 ├── app/              # App Router: routes (/, /design-system, /components,
 │   │                 #   /shortcuts, /universe, /universes), root layout
-│   │                 #   (LaunchTransition + CommandPalette + OnboardingTour)
+│   │                 #   (LaunchTransition + CommandPalette + OnboardingTour +
+│   │                 #   SettingsModal + PWA service-worker register)
 ├── assets/           # Imported static files (images/, fonts/)
 ├── components/       # Shared presentational components
 │   ├── ui/           #   primitives: button, badge, card, icon, input, search,
@@ -23,22 +24,32 @@ src/
 │   ├── manager/      #   Universe Manager: sidebar, cards, stats modal, data
 │   ├── universe/     #   scene/ (three.js), HUD, assistant, dossier, timeline,
 │   │                 #   minimap, insights, create-universe
-│   └── shared/       #   cross-route surfaces: command palette, onboarding tour
-├── hooks/            # Shared React hooks (the only door sections use into stores)
+│   └── shared/       #   cross-route surfaces: command palette, onboarding tour,
+│                     #   settings dialog (assistant/GitHub/sync/sound/app), PWA
+│                     #   register
+├── hooks/            # Shared React hooks (the only door sections use into
+│   │                 #   stores and services)
 ├── stores/           # Global Zustand stores (client state): workspace (persisted),
-│   │                 #   stock-workspace, universe, assistant, search, timeline, launch
+│   │                 #   stock-workspace, universe, assistant, search, timeline,
+│   │                 #   launch, settings (device-local: prefs + BYO secrets —
+│   │                 #   never exported, never synced)
 ├── services/         # Data layer — the only code that performs network I/O
-│   └── api/          #   fetch client, endpoints, error types
+│   └── api/          #   ai.ts (SSE streaming, OpenAI/Anthropic), github.ts
+│                     #   (live repo snapshots + 10-min cache), gist.ts (workspace
+│                     #   sync)
 ├── lib/              # Infrastructure: prng.ts (seeded RNG), universe-generator.ts
 │   │                 #   (procedural worlds + deterministic simulations), cn(),
-│   │                 #   icons.ts (semantic icon registry → <Icon>)
+│   │                 #   icons.ts (semantic icon registry → <Icon>), audio.ts
+│   │                 #   (Web Audio cues + seeded ambient), install.ts (beforeinstall
+│   │                 #   prompt), settings-event.ts (openSettings dispatch)
 ├── styles/           # tokens/theme/base/components CSS layers (imported by
 │                     #   app/globals.css)
 ├── utils/            # Pure, framework-agnostic helpers
 ├── types/            # Shared TypeScript types (workspace, universe, …)
 ├── constants/        # Routes, query keys, feature flags, timings
 └── data/             # Static/mock content (never secrets)
-public/               # Statically served files (favicon, robots, og-images)
+public/               # Statically served files (favicon, robots, og-images,
+                      #   manifest.json, sw.js, icons/ — PWA)
 ```
 
 ## Routes
@@ -344,7 +355,68 @@ first, then whatever overlay is topmost unwinds next — the tour while it
 is active, the minimap/dashboard via their capture-phase listeners
 (guarded by `open`), then `/universe`'s own chain: assistant conversation →
 revealed frame → focused dossier → timeline parked in the past → route
-exit. Every layer closes exactly one level per press, topmost first.
+exit. Every layer closes exactly one level per press, topmost first. A modal
+dialog owns the press outright: any `[role="dialog"][aria-modal="true"]`
+surface (Settings, create-universe) makes the shell's chain stand down —
+Radix closes without stopping propagation, so the guard detects the dialog
+while React hasn't re-rendered yet.
+
+## Optional integrations
+
+Everything in this section is **layered on top of the deterministic engines**
+and gated on configuration. No key, no token, no network ⇒ the app behaves
+byte-for-byte as shipped: the built-in reply engine, the simulated GitHub
+feed, local-only state, silence. Secrets live in `stores/settings-store.ts`
+under `astra.settings.v1` (localStorage, device-local) and are **never**
+part of `exportJson()`, gist sync, or any telemetry.
+
+**Settings hub** (`sections/shared/settings-modal.tsx`) — one Radix dialog
+mounted in the root layout with five sections (Assistant, GitHub, Sync,
+Sound, App), opened from anywhere via `openSettings(section)`
+(`lib/settings-event.ts` → `astra:settings-open` CustomEvent — same pattern
+as the tour). The orb's gear, the command palette, the manager's Sync
+button and the HUD pill all funnel through it. It renders nothing until
+opened, so routes pay no cost for it.
+
+**AI brain** — BYO API key (OpenAI or Anthropic, `anthropic-dangerous-
+direct-browser-access` header for direct browser calls) streams SSE
+completions via `services/api/ai.ts` through the `aiActions()` hook
+grab-bag. Escalation is deliberately narrow: the local `respond()` engine
+answers **every** recognized intent (camera magic, instant, offline), and
+only two cases reach the model when configured — `reply.fallback` (nothing
+matched) and `reply.loose` question-shapes (loose keyword overlap like
+"life" → "lifecycle"; `isQuestion()` keeps imperative searches local).
+Stream errors silently fall back to the deterministic reply; with no key the
+`fallback` branch never runs. The system prompt is a plain-text workspace
+briefing (`buildSystemPrompt`) so answers are grounded in real worlds.
+
+**GitHub live mode** — token-gated PAT reads via `services/api/github.ts`
+(7 parallel REST GETs → `RepoSimulation` shapes), 10-minute localStorage
+cache under `astra.ghcache.v1` with in-flight dedupe, exposed through
+`hooks/use-github.ts` (`useRepoFeed`/`useRepoSimulation`) and the
+`astra:github-refresh` event. Without a token the hooks return the seeded
+simulations exactly as before; with one, the HUD pill shows live/sim/sync
+state (sim click opens Settings→GitHub, live click refreshes).
+
+**Gist workspace sync** — `services/api/gist.ts` stores the exact
+`exportJson()` output as the file `astra-workspace.json` in a secret gist.
+Pull is preview-then-confirm (counts before overwrite), upload is a
+two-step confirm; gist id + last-synced live in the settings store. The
+manager toolbar's Sync button and Settings→Sync are the only surfaces.
+
+**Sound & atmosphere** — `lib/audio.ts` is a pure Web Audio engine: lazy
+`AudioContext` (gesture-resumed, all promise rejections swallowed),
+`playCue(...)` for UI feedback (send/reply/warp/open/focus…), and a
+seeded ambient pad keyed off the active record's seed (universe route
+only). Defaults are master-off; `useSoundConfig()` feeds Settings→Sound,
+`configure()` mirrors prefs for engine reads.
+
+**PWA** — `public/manifest.json` (start `/universes`), hand-rolled PNG
+icons (`npm run icons` → `scripts/generate-icons.mjs`, zlib-only
+supersampled renderer), and `public/sw.js`: network-first navigations,
+cache-first `/_next/static`, same-origin stale-while-revalidate for the
+rest. Registration is production-only and load-idle (`pwa-register.tsx`);
+Install/uninstall state surfaces in Settings→App and the palette.
 
 ## Dependency rules
 
@@ -362,7 +434,9 @@ exit. Every layer closes exactly one level per press, topmost first.
 Zustand (`stores/`), local UI state → `useState`/`useReducer`. Sections and
 components reach Zustand only through `hooks/` selectors (or the
 `workspaceActions()` grab-bag in event handlers) — never `@/stores`
-directly.
+directly — and reach network calls only through the hook grab-bags
+(`aiActions()`, `githubActions()`, `syncActions()`, `workspaceActions()`) —
+never `@/services` directly.
 
 ## Scripts
 
@@ -374,4 +448,5 @@ npm run lint          # ESLint
 npm run typecheck     # tsc --noEmit
 npm run format        # Prettier write
 npm run format:check  # Prettier --check (CI gate)
+npm run icons         # regenerate public/icons/*.png from scripts/generate-icons.mjs
 ```

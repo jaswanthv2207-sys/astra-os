@@ -1,36 +1,46 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Astra OS
 
-## Getting Started
+A cinematic, workspace-driven "universe manager" built with Next.js 15 (App
+Router), TypeScript, Tailwind, Framer Motion and three.js. Every project in
+your workspace becomes a world in a seeded solar system — browse it, focus
+it, time-travel through its history, and ask Astra about it.
 
-First, run the development server:
+- `/` — cinematic landing (Launch Universe warp into `/universe`)
+- `/universes` — Universe Manager: folders, search, cards, import/export,
+  stats, notifications
+- `/universe` — immersive 3D experience: scene, HUD, Astra assistant,
+  dossier, timeline, minimap, insights
+- `/shortcuts` — keyboard reference + guided tour
+- `/design-system`, `/components` — live style guide and component gallery
+
+## Getting started
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run dev        # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Production: `npm run build && npm start`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Optional integrations
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Everything network-facing is opt-in and layered on top of the deterministic
+engines. **No key, no token, no network ⇒ the app behaves exactly as
+shipped** (simulated data, local-only state, silence). Secrets are stored
+in localStorage only — never exported, never synced.
 
-## Learn More
+Configure them in **Settings** (gear icon, `⌘K → Open settings`, or the
+manager toolbar):
 
-To learn more about Next.js, take a look at the following resources:
+- **Assistant** — bring your own OpenAI/Anthropic API key; free-form asks
+  then stream from the real model while recognized intents stay local.
+- **GitHub** — a PAT switches the repo feed to live REST data (cached
+  10 minutes).
+- **Sync** — mirror `exportJson()` to a secret GitHub gist, pull it back
+  with preview-and-confirm.
+- **Sound** — master toggle, ambient pad and UI cues (off by default).
+- **App** — install as a PWA, offline status, reset.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+See [STRUCTURE.md](./STRUCTURE.md) for architecture, dependency rules and
+the full script list (`npm run lint`, `typecheck`, `format:check`, `build`,
+`icons`).
