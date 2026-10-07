@@ -54,6 +54,8 @@ export interface AssistantState {
   close: () => void;
   /** Append one message to the transcript. */
   push: (message: AssistantMessage) => void;
+  /** Patch a message in place — how a streamed reply grows token by token. */
+  update: (id: string, patch: Partial<AssistantMessage>) => void;
 }
 
 export const useAssistantStore = create<AssistantState>((set) => ({
@@ -63,4 +65,10 @@ export const useAssistantStore = create<AssistantState>((set) => ({
   close: () => set((state) => (state.open ? { open: false } : state)),
   push: (message) =>
     set((state) => ({ messages: [...state.messages, message] })),
+  update: (id, patch) =>
+    set((state) => ({
+      messages: state.messages.map((message) =>
+        message.id === id ? { ...message, ...patch } : message,
+      ),
+    })),
 }));

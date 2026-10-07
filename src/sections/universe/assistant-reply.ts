@@ -51,6 +51,19 @@ export interface AssistantReply {
    * copy is readable — collapses the panel so the reveal owns the stage).
    */
   run?: AssistantReplyAction;
+  /**
+   * True when nothing matched — the generic fallback. The shell escalates
+   * exactly this case to a configured language model (free-form asks); every
+   * recognized intent stays local and instant.
+   */
+  fallback?: boolean;
+  /**
+   * True when the search layer matched only through loose keyword overlap
+   * ("life" hitting "lifecycle"). The shell escalates question-shaped asks
+   * in this state to a configured model too; imperative searches ("open
+   * …", "show all …") keep their local camera magic either way.
+   */
+  loose?: boolean;
 }
 
 /* ── Intent patterns ─────────────────────────────────────────────────────── */
@@ -307,11 +320,88 @@ function projectStatusReply(
 
 /* ── Engine ──────────────────────────────────────────────────────────────── */
 
+/**
+ * buildSystemPrompt — the worldview handed to a real model for free-form
+ * asks: the briefing rollup, every world's status and stack, plus the
+ * focused world if the camera is holding one.
+ *
+ * Plain text on purpose — the assistant renders newlines and bullets, not
+ * markdown, so the model is told to match the surface.
+ */
+export function buildSystemPrompt(
+  projects: readonly Project[],
+  context: Project | null,
+  briefing?: UniverseBriefing | null,
+): string {
+  const lines: string[] = [
+    "You are Astra, the AI inside Astra OS — a local-first workspace where every project is its own universe of orbiting worlds.",
+    "Answer about this workspace: worlds, tasks, deadlines, health. Lead with concrete names, numbers and dates from the brief; only generalise when the brief is silent.",
+    "Voice: warm, direct, compact — about 80 words unless asked for more.",
+    "Format: plain text only — no markdown, no headers, no asterisks. Separate short paragraphs with single newlines.",
+  ];
+
+  if (briefing) {
+    const { insights } = briefing;
+    lines.push(
+      "",
+      `Universe “${briefing.name}”: ${briefing.worldCount} worlds · ${briefing.openTasks} open task${briefing.openTasks === 1 ? "" : "s"} · ${briefing.doneTasks} done.`,
+      `Health ${insights.health}/100 · risk ${insights.riskScore}/100 · predicted completion ${insights.completionPrediction}% · productivity ${insights.productivity}/100.`,
+    );
+    if (insights.bottleneck) lines.push(`Bottleneck: ${insights.bottleneck}.`);
+    if (insights.deadlines.length > 0) {
+      const due = insights.deadlines
+        .slice(0, 4)
+        .map(
+          (deadline) =>
+            `${deadline.name} (${new Date(deadline.dueAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })})`,
+        )
+        .join(", ");
+      lines.push(`Deadlines: ${due}.`);
+    }
+    if (insights.actions.length > 0) {
+      lines.push(
+        `Suggested next actions: ${insights.actions.slice(0, 3).join(" ")}`,
+      );
+    }
+  }
+
+  lines.push("", "Worlds:");
+  for (const project of projects.slice(0, 14)) {
+    lines.push(
+      `- ${project.name} — ${project.status}, ${project.progress}% · stack: ${project.stack.slice(0, 4).join(", ")}`,
+    );
+  }
+
+  if (context) {
+    lines.push(
+      "",
+      `The camera is focused on ${context.name} — ${context.summary.slice(0, 160)}`,
+    );
+  }
+
+  return lines.join("\n");
+}
+
 export interface RespondContext {
   /** The world the camera is holding, if any — the conversation's context. */
   focused: Project | null;
   /** Live universe rollup — status/attention/deadline asks read from it. */
   briefing?: UniverseBriefing | null;
+}
+
+/**
+ * isQuestion — does the utterance *ask* something rather than *direct* the
+ * camera? Leading interrogatives or a question mark. Used to decide when a
+ * loose keyword match should instead escalate to a real model: "What is the
+ * meaning of life?" must not become "Matching “meaning life”: …", while
+ * "open the lifecycle world" still commits locally.
+ */
+export function isQuestion(raw: string): boolean {
+  const text = raw.trim();
+  if (text.endsWith("?")) return true;
+  return /^(what|why|how|who|whom|whose|when|where|which|is|are|was|were|do|does|did|can|could|should|would|will|tell me|explain|define|describe)\b/i.test(
+    text,
+  );
 }
 
 /**
@@ -377,6 +467,7 @@ export function respond(raw: string, context: RespondContext): AssistantReply {
       text: open
         ? `${describe} Opening ${best.name}.`
         : `${describe} Framing all ${n}.`,
+      loose: reason === "text",
       run: open
         ? {
             id: `open-${best.id}`,
@@ -397,6 +488,7 @@ export function respond(raw: string, context: RespondContext): AssistantReply {
 
   return {
     text: `I couldn't tie “${text}” to a world. Try a tag (“AI”), a stack (“Fast API”), “latest”, or ask what I can do.`,
+    fallback: true,
   };
 }
 

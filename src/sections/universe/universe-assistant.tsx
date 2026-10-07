@@ -14,10 +14,24 @@ import {
 import { useUniverseBriefing } from "@/hooks/use-insights";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { useSearch } from "@/hooks/use-search";
+import {
+  aiActions,
+  aiConfigured,
+  resolveModel,
+  useSettings,
+  type ChatMessage,
+} from "@/hooks/use-settings";
 import { useUniverse } from "@/hooks/use-universe";
+import { playCue } from "@/lib/audio";
+import { openSettings } from "@/lib/settings-event";
 import { cn } from "@/lib/utils";
 
-import { respond, suggestReplies } from "./assistant-reply";
+import {
+  buildSystemPrompt,
+  isQuestion,
+  respond,
+  suggestReplies,
+} from "./assistant-reply";
 
 /* ────────────────────────────────────────────────────────────────────────── *
  * UniverseAssistant — Astra, the glowing orb in the lower-right corner of
@@ -32,6 +46,10 @@ import { respond, suggestReplies } from "./assistant-reply";
  * camera reveal owns the stage, exactly like a search commit. A live
  * briefing (health, tasks, deadlines) rides along, so universe-level asks
  * like "How's my universe doing?" answer with real numbers, on-device.
+ * Free-form asks — the engine's fallback — escalate to a configured model
+ * (Settings → Assistant) and stream in token by token, with the
+ * deterministic reply as the error path. No key, no network: local, as
+ * always.
  *
  * Placement: the dossier owns the right edge on desktop, so the anchor
  * column slides left of it while a world is focused; on mobile the dossier
@@ -305,6 +323,7 @@ function AssistantPanel({
 }: PanelProps) {
   const inputRef = React.useRef<HTMLInputElement>(null);
   const logRef = React.useRef<HTMLDivElement>(null);
+  const { ai } = useSettings();
 
   // Focus lands in the composer the moment the panel exists…
   React.useEffect(() => {
@@ -374,12 +393,21 @@ function AssistantPanel({
               <span className="text-aura-violet-soft">reasoning…</span>
             ) : context ? (
               <>context · {context.name}</>
+            ) : aiConfigured(ai) ? (
+              "online · live model"
             ) : (
               "online · local reasoning"
             )}
           </p>
         </div>
         {thinking && <Waveform animate={!reduce} bars={4} />}
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          aria-label="Open settings"
+          onClick={() => openSettings("assistant")}
+          iconLeft={<Icon name="settings" />}
+        />
         <Button
           variant="ghost"
           size="icon-sm"
@@ -488,7 +516,8 @@ function AssistantPanel({
 
 export function UniverseAssistant() {
   const reduce = Boolean(useReducedMotion());
-  const { open, messages, setOpen, push } = useAssistant();
+  const { open, messages, setOpen, push, update } = useAssistant();
+  const { ai } = useSettings();
   const { focusedId, focus, release } = useUniverse();
   const { setMatches, frame, clearFrame } = useSearch();
   const isDesktop = useMediaQuery("(min-width: 1024px)");
@@ -520,9 +549,12 @@ export function UniverseAssistant() {
 
   /* ── Conversation ─────────────────────────────────────────────────────── */
   const timers = React.useRef<number[]>([]);
+  /** In-flight model stream — aborted when /universe unmounts. */
+  const streamAbort = React.useRef<AbortController | null>(null);
   React.useEffect(
     () => () => {
       timers.current.forEach((timer) => window.clearTimeout(timer));
+      streamAbort.current?.abort();
     },
     [],
   );
@@ -537,9 +569,11 @@ export function UniverseAssistant() {
       if (action.kind === "focus") {
         const [id] = action.ids;
         if (!id) return;
+        playCue("focus");
         clearFrame();
         focus(id);
       } else if (action.kind === "frame" && action.ids.length > 0) {
+        playCue("focus");
         const ids = [...action.ids];
         release();
         setMatches(ids);
@@ -554,10 +588,72 @@ export function UniverseAssistant() {
       const text = raw.trim();
       if (!text || thinking) return;
       setDraft("");
+      const history = messages; // transcript before this turn
       push({ id: nextId(), role: "user", text });
       setThinking(true);
+      playCue("send");
 
       const reply = respond(text, { focused: context, briefing });
+
+      /* Free-form ask + configured model → stream a real completion.
+         That's the engine's own fallback (nothing matched) or a question
+         riding a loose keyword hit ("life" → "lifecycle") — imperative
+         searches and every recognized intent stay local (instant camera
+         magic, no tokens, works offline); stream errors fall back to
+         `reply`. */
+      const escalate =
+        reply.fallback || (reply.loose === true && isQuestion(text));
+      if (escalate && aiConfigured(ai)) {
+        const messageId = nextId();
+        const controller = new AbortController();
+        streamAbort.current = controller;
+        let accumulated = "";
+        let started = false;
+        void (async () => {
+          try {
+            const chat: ChatMessage[] = [
+              {
+                role: "system",
+                content: buildSystemPrompt(projects, context, briefing),
+              },
+              ...history.slice(-8).map((message): ChatMessage => ({
+                role: message.role === "user" ? "user" : "assistant",
+                content: message.text,
+              })),
+              { role: "user", content: text },
+            ];
+            for await (const chunk of aiActions().stream({
+              provider: ai.provider,
+              model: resolveModel(ai),
+              key: ai.key.trim(),
+              messages: chat,
+              signal: controller.signal,
+            })) {
+              accumulated += chunk;
+              if (!started) {
+                started = true;
+                setThinking(false);
+                push({ id: messageId, role: "astra", text: accumulated });
+              } else {
+                update(messageId, { text: accumulated });
+              }
+            }
+            if (!started) throw new Error("Empty response.");
+            setThinking(false);
+            playCue("reply");
+          } catch {
+            // User left the scene mid-stream — let the message stand.
+            if (controller.signal.aborted) return;
+            setThinking(false);
+            const fallbackText = reply.text;
+            if (started) update(messageId, { text: fallbackText });
+            else push({ id: messageId, role: "astra", text: fallbackText });
+            playCue("reply");
+          }
+        })();
+        return;
+      }
+
       const thinkMs = reduce ? 240 : 520 + Math.min(460, reply.text.length * 4);
       const replyTimer = window.setTimeout(() => {
         setThinking(false);
@@ -567,6 +663,7 @@ export function UniverseAssistant() {
           text: reply.text,
           actions: reply.actions,
         });
+        playCue("reply");
         if (reply.run) {
           // The reveal owns the stage — hold the copy briefly, then fold.
           execute(reply.run);
@@ -579,7 +676,20 @@ export function UniverseAssistant() {
       }, thinkMs);
       timers.current.push(replyTimer);
     },
-    [briefing, context, execute, nextId, push, reduce, setOpen, thinking],
+    [
+      ai,
+      briefing,
+      context,
+      execute,
+      messages,
+      nextId,
+      projects,
+      push,
+      reduce,
+      setOpen,
+      thinking,
+      update,
+    ],
   );
 
   /** Action chips run immediately and fold the panel (same stage rules). */

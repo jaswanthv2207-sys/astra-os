@@ -33,18 +33,20 @@ export interface UseAssistantResult {
   messages: AssistantMessage[];
   setOpen: AssistantState["setOpen"];
   push: AssistantState["push"];
+  update: AssistantState["update"];
 }
 
 /**
  * Everything in one view — for `UniverseAssistant`, which drives it all.
  *
  * @example
- * const { open, messages, setOpen, push } = useAssistant();
+ * const { open, messages, setOpen, push, update } = useAssistant();
  */
 export function useAssistant(): UseAssistantResult {
   const open = useAssistantStore((state) => state.open);
   const messages = useAssistantStore((state) => state.messages);
   const setOpen = useAssistantStore((state) => state.setOpen);
   const push = useAssistantStore((state) => state.push);
-  return { open, messages, setOpen, push };
+  const update = useAssistantStore((state) => state.update);
+  return { open, messages, setOpen, push, update };
 }
