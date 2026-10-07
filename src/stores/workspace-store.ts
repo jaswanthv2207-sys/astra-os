@@ -9,6 +9,7 @@ import {
   generatePlanetNotes,
   generatePlanetTasks,
 } from "@/lib/universe-generator";
+import { DEFAULT_AI_MODEL, PLANET_STYLES, THEMES } from "@/types/workspace";
 import type {
   Achievement,
   Folder,
@@ -795,24 +796,86 @@ export const useWorkspaceStore = create<WorkspaceState>()(
 
         importJson: (json) => {
           try {
-            const parsed = JSON.parse(json) as {
+            const parsed = JSON.parse(json) as Record<string, unknown> & {
               app?: string;
               kind?: string;
               universes?: UniverseRecord[];
               folders?: Folder[];
+              id?: string;
+              name?: string;
+              seed?: number;
             };
+
+            let universes: UniverseRecord[];
+            let folders: Folder[] = [];
+
             if (
-              parsed.kind !== "workspace" ||
-              !Array.isArray(parsed.universes)
+              parsed.kind === "workspace" &&
+              Array.isArray(parsed.universes)
             ) {
+              universes = parsed.universes;
+              folders = parsed.folders ?? [];
+            } else if (
+              typeof parsed.id === "string" &&
+              typeof parsed.name === "string" &&
+              typeof parsed.seed === "number"
+            ) {
+              /* A single-card export (`exportOne` writes the raw
+                 UniverseRecord) — import it as a one-world workspace.
+                 Missing fields get safe defaults so a hand-trimmed file
+                 still renders a complete card; envelope keys are stripped. */
+              const envelope = new Set([
+                "app",
+                "kind",
+                "version",
+                "exportedAt",
+                "universes",
+                "folders",
+                "achievements",
+                "streak",
+              ]);
+              const bare = Object.fromEntries(
+                Object.entries(parsed).filter(([key]) => !envelope.has(key)),
+              ) as Partial<UniverseRecord>;
+              universes = [
+                {
+                  description: "",
+                  themeId: THEMES[0].id,
+                  planetStyleId: PLANET_STYLES[0].id,
+                  cover: "",
+                  teamMembers: [],
+                  aiModel: DEFAULT_AI_MODEL,
+                  privacy: "private",
+                  githubRepo: "",
+                  deadline: null,
+                  tags: [],
+                  createdAt: Date.now(),
+                  updatedAt: Date.now(),
+                  favorite: false,
+                  archived: false,
+                  folderId: null,
+                  order: 0,
+                  planetMeta: {},
+                  planetTasks: {},
+                  planetNotes: {},
+                  planetDocs: {},
+                  planetActivity: {},
+                  ...bare,
+                  id: parsed.id,
+                  name: parsed.name,
+                  seed: parsed.seed,
+                } as UniverseRecord,
+              ];
+            } else {
               return {
                 ok: false,
                 count: 0,
-                error: "Not an Astra workspace file.",
+                error: "Not an Astra workspace or universe file.",
               };
             }
+
             const existing = new Set(get().universes.map((u) => u.id));
-            const incoming = parsed.universes.filter(
+            const incoming = universes.filter(
               (u) => u && u.id && !existing.has(u.id),
             );
             if (incoming.length === 0) {
@@ -820,7 +883,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
             }
             set((state) => ({
               universes: [...state.universes, ...incoming],
-              folders: [...state.folders, ...(parsed.folders ?? [])],
+              folders: [...state.folders, ...folders],
             }));
             return { ok: true, count: incoming.length };
           } catch {

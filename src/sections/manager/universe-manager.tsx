@@ -222,6 +222,7 @@ export function UniverseManager() {
   const [renameDraft, setRenameDraft] = React.useState("");
   const [deleting, setDeleting] = React.useState<UniverseRecord | null>(null);
   const [importError, setImportError] = React.useState<string | null>(null);
+  const [importOk, setImportOk] = React.useState<string | null>(null);
 
   const query: ManagerQuery = React.useMemo(
     () => ({ view, folderId, search }),
@@ -275,10 +276,17 @@ export function UniverseManager() {
 
   const importFile = async (file: File) => {
     setImportError(null);
+    setImportOk(null);
     try {
       const text = await file.text();
       const result = workspaceActions().importJson(text);
-      if (!result.ok) setImportError(result.error ?? "Import failed.");
+      if (result.ok) {
+        setImportOk(
+          `Imported ${result.count} universe${result.count === 1 ? "" : "s"}.`,
+        );
+      } else {
+        setImportError(result.error ?? "Import failed.");
+      }
     } catch {
       setImportError("Could not read that file.");
     }
@@ -526,6 +534,11 @@ export function UniverseManager() {
           {importError && (
             <p role="alert" className="text-danger text-xs">
               {importError}
+            </p>
+          )}
+          {importOk && (
+            <p role="status" className="text-success text-xs">
+              {importOk}
             </p>
           )}
 
