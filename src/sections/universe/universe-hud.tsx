@@ -183,7 +183,7 @@ export function UniverseHud({
           </span>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div data-tour="hud-actions" className="flex items-center gap-2">
           <Button
             ref={mapTriggerRef}
             variant="glass"
@@ -289,7 +289,10 @@ export function UniverseHud({
         </motion.aside>
 
         {/* centre: reticle */}
-        <div className="flex flex-1 flex-col items-center justify-center gap-3">
+        <div
+          data-tour="scene-center"
+          className="flex flex-1 flex-col items-center justify-center gap-3"
+        >
           <motion.div
             {...(reduce
               ? { initial: false as const }

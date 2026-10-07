@@ -26,6 +26,7 @@ const DEFAULT_LINKS: NavLink[] = [
   { label: "Home", href: "/" },
   { label: "Design system", href: "/design-system" },
   { label: "Components", href: "/components" },
+  { label: "Shortcuts", href: "/shortcuts" },
 ];
 
 /**

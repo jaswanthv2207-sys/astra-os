@@ -137,6 +137,7 @@ function AssistantOrb({
           ref={orbRef}
           type="button"
           onClick={onOpen}
+          data-tour="orb"
           aria-label={
             unread
               ? "Open Astra assistant (conversation in progress)"

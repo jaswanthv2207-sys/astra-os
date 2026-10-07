@@ -191,6 +191,7 @@ export function ManagerSidebar({
 
   return (
     <aside
+      data-tour="manager-sidebar"
       className={cn(
         "glass-strong flex h-full w-64 shrink-0 flex-col rounded-2xl",
         className,

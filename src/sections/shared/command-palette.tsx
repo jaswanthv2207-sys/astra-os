@@ -246,13 +246,23 @@ export function CommandPalette() {
       });
     }
     if (onUniverse || pathname === "/universes") {
-      list.push({
-        id: "create-universe",
-        group: "actions",
-        icon: "plus",
-        label: "Create a new universe",
-        run: () => window.dispatchEvent(new Event("astra:new-universe")),
-      });
+      list.push(
+        {
+          id: "create-universe",
+          group: "actions",
+          icon: "plus",
+          label: "Create a new universe",
+          run: () => window.dispatchEvent(new Event("astra:new-universe")),
+        },
+        {
+          id: "start-tour",
+          group: "actions",
+          icon: "rocket",
+          label: "Start the guided tour",
+          hint: "onboarding",
+          run: () => window.dispatchEvent(new Event("astra:tour-start")),
+        },
+      );
     }
 
     list.push(
@@ -295,6 +305,14 @@ export function CommandPalette() {
         label: "Components",
         hint: "/components",
         run: () => router.push("/components"),
+      },
+      {
+        id: "go-shortcuts",
+        group: "go",
+        icon: "command",
+        label: "Keyboard shortcuts",
+        hint: "/shortcuts",
+        run: () => router.push("/shortcuts"),
       },
     );
 

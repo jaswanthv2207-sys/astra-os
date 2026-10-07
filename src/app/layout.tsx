@@ -4,6 +4,7 @@ import "./globals.css";
 
 import { LaunchTransition } from "@/components/shared";
 import { CommandPalette } from "@/sections/shared/command-palette";
+import { OnboardingTour } from "@/sections/shared/onboarding-tour";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -45,6 +46,8 @@ export default function RootLayout({
         <LaunchTransition />
         {/* App-wide ⌘K surface — mounts on every route. */}
         <CommandPalette />
+        {/* Guided tour — auto on first manager visit, manual elsewhere. */}
+        <OnboardingTour />
       </body>
     </html>
   );

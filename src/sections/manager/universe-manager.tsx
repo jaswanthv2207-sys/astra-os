@@ -391,6 +391,7 @@ export function UniverseManager() {
         {/* ── main ────────────────────────────────────────────────── */}
         <main id="manager-main" className="min-w-0 flex-1 space-y-5">
           <motion.header
+            data-tour="manager-toolbar"
             initial={reduce ? false : { opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
@@ -541,7 +542,10 @@ export function UniverseManager() {
                 items={visible.map((record) => record.id)}
                 strategy={rectSortingStrategy}
               >
-                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                <div
+                  data-tour="manager-grid"
+                  className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3"
+                >
                   <AnimatePresence mode="popLayout">
                     {visible.map((record, index) => (
                       <UniverseCard

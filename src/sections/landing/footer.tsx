@@ -16,6 +16,7 @@ const COLUMNS: { title: string; links: { label: string; href: string }[] }[] = [
     links: [
       { label: "Design system", href: "/design-system" },
       { label: "Components", href: "/components" },
+      { label: "Keyboard shortcuts", href: "/shortcuts" },
       { label: "Early access", href: "#waitlist" },
     ],
   },
