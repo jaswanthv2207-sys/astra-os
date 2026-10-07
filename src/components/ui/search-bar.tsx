@@ -62,10 +62,14 @@ export function SearchBar({
 }: SearchBarProps) {
   const inputRef = React.useRef<HTMLInputElement>(null);
   const inputId = idProp ?? srLabel.toLowerCase().replace(/[^a-z0-9]+/g, "-");
-  const isMac = React.useRef(
-    typeof navigator !== "undefined" &&
-      /Mac|iPhone|iPad|iPod/.test(navigator.platform || ""),
-  );
+  // The hint must hydrate identically on every build machine (prerender runs
+  // wherever the app is built — my Mac, Vercel's Linux), so first render is
+  // the constant default and the real platform lands after mount.
+  const [isMac, setIsMac] = React.useState(true);
+
+  React.useEffect(() => {
+    setIsMac(/Mac|iPhone|iPad|iPod/.test(navigator.platform || ""));
+  }, []);
 
   React.useEffect(() => {
     if (!enableGlobalShortcut) return;
@@ -163,7 +167,7 @@ export function SearchBar({
               "sm:inline-flex",
             )}
           >
-            {isMac.current ? "⌘" : "Ctrl"}
+            {isMac ? "⌘" : "Ctrl"}
             <span className="text-ink-ghost group-focus-within/search:text-aura-violet-soft">
               K
             </span>
