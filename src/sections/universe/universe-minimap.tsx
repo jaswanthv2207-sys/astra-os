@@ -8,6 +8,7 @@ import { Button, Icon } from "@/components";
 import { useSceneData, useSceneProjects } from "@/hooks/use-scene-data";
 import { useTimelineDate } from "@/hooks/use-timeline";
 import { useUniverse } from "@/hooks/use-universe";
+import { playCue } from "@/lib/audio";
 import { cn } from "@/lib/utils";
 
 import { readPlanetPosition } from "./scene/planet-registry";
@@ -549,6 +550,7 @@ function MinimapPanel({ onOpenChange }: MinimapPanelProps) {
     const project = projects.find((candidate) => candidate.id === id);
     if (!project) return;
     if (arrivalFactor(viewedDate, createdAt(project)) <= 0) return;
+    playCue("warp");
     const pixel = pixelOf(id);
     if (reduce || !pixel) {
       focus(id);

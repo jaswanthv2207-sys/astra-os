@@ -38,6 +38,8 @@ const EASE = [0.16, 1, 0.3, 1] as const;
 const STORAGE_LABELS: Record<string, string> = {
   "astra.workspace.v1": "Workspace",
   "astra.stock-planets.v1": "Stock planets",
+  "astra.settings.v1": "Settings",
+  "astra.ghcache.v1": "GitHub cache",
 };
 
 interface StorageRow {

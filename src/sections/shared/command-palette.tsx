@@ -9,6 +9,7 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Icon } from "@/components";
 import { useAssistant } from "@/hooks/use-assistant";
 import { useSceneProjects } from "@/hooks/use-scene-data";
+import { useSettings, settingsActions } from "@/hooks/use-settings";
 import { useTimeline } from "@/hooks/use-timeline";
 import { useUniverse } from "@/hooks/use-universe";
 import {
@@ -16,7 +17,10 @@ import {
   useUniverses,
   workspaceActions,
 } from "@/hooks/use-workspace";
+import { playCue } from "@/lib/audio";
+import { promptInstall } from "@/lib/install";
 import type { IconName } from "@/lib/icons";
+import { openSettings } from "@/lib/settings-event";
 import { cn } from "@/lib/utils";
 import { timelineEngaged } from "@/sections/universe/timeline";
 
@@ -148,6 +152,7 @@ export function CommandPalette() {
   React.useEffect(() => setMounted(true), []);
 
   const engaged = timelineEngaged(date, now);
+  const { sound } = useSettings();
 
   /* ── keyboard ownership ──────────────────────────────────────────────── */
   React.useEffect(() => {
@@ -185,6 +190,7 @@ export function CommandPalette() {
   /* ── open/close lifecycle ────────────────────────────────────────────── */
   React.useEffect(() => {
     if (open) {
+      playCue("open");
       wasOpen.current = true;
       openerRef.current = document.activeElement as HTMLElement | null;
       setQuery("");
@@ -266,6 +272,34 @@ export function CommandPalette() {
     }
 
     list.push(
+      {
+        id: "open-settings",
+        group: "actions",
+        icon: "settings",
+        label: "Open settings",
+        hint: "AI · GitHub · sound",
+        run: () => openSettings(),
+      },
+      {
+        id: "toggle-sound",
+        group: "actions",
+        icon: "activity",
+        label: "Toggle sound",
+        hint: sound.on ? "mute" : "unmute",
+        run: () => settingsActions().setSound({ on: !sound.on }),
+      },
+      {
+        id: "install-app",
+        group: "actions",
+        icon: "download",
+        label: "Install Astra OS",
+        hint: "app",
+        run: () => {
+          void promptInstall().then((outcome) => {
+            if (outcome === "unavailable") openSettings("app");
+          });
+        },
+      },
       {
         id: "go-universe",
         group: "go",
@@ -357,6 +391,7 @@ export function CommandPalette() {
     resetToNow,
     router,
     setAssistantOpen,
+    sound.on,
     universes,
   ]);
 

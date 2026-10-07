@@ -9,6 +9,7 @@
  *   stores/timeline-store.ts – /universe knowledge-timeline viewed date
  *   stores/workspace-store.ts– multi-universe workspace (persisted)
  *   stores/stock-workspace.ts– stock-graph per-planet tasks/notes/docs
+ *   stores/settings-store.ts – device-local settings + credentials (secret)
  *
  * Server state belongs in React Query (`src/services`), not Zustand.
  * Consumers read stores through `src/hooks` — never import them from
@@ -44,3 +45,13 @@ export {
   STOCK_SEED,
   type StockWorkspaceState,
 } from "./stock-workspace";
+export {
+  useSettingsStore,
+  SETTINGS_KEY,
+  DEFAULT_MODELS,
+  type AiProvider,
+  type AiSettings,
+  type GithubSettings,
+  type SoundSettings,
+  type SettingsState,
+} from "./settings-store";

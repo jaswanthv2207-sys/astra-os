@@ -1,0 +1,50 @@
+{
+  "name": "Astra OS",
+  "short_name": "AstraOS",
+  "description": "A multi-project workspace where every project is its own universe.",
+  "id": "/",
+  "start_url": "/universes",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#050507",
+  "theme_color": "#050507",
+  "categories": ["productivity", "utilities"],
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Workspace",
+      "url": "/universes",
+      "description": "All universes"
+    },
+    {
+      "name": "Active universe",
+      "url": "/universe",
+      "description": "The live scene"
+    },
+    {
+      "name": "Keyboard shortcuts",
+      "url": "/shortcuts",
+      "description": "Every shortcut in one place"
+    }
+  ]
+}

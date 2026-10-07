@@ -48,3 +48,16 @@ export {
   setTimelineWindow,
   type UseTimelineResult,
 } from "./use-timeline";
+export {
+  useSettings,
+  settingsActions,
+  resolveModel,
+  aiConfigured,
+  githubConfigured,
+  aiActions,
+  githubActions,
+  syncActions,
+  type ChatMessage,
+  type UseSettingsResult,
+} from "./use-settings";
+export { useSoundConfig, useAmbient } from "./use-sound";

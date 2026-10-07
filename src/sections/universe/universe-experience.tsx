@@ -21,6 +21,7 @@ import {
   setTimelineWindow,
 } from "@/hooks/use-timeline";
 import { useUniverse } from "@/hooks/use-universe";
+import { useAmbient } from "@/hooks/use-sound";
 import { useActiveUniverseRecord } from "@/hooks/use-workspace";
 import { cn } from "@/lib/utils";
 
@@ -124,6 +125,9 @@ export function UniverseExperience() {
      projects/links on its very first pass — no stale-stock frame. With no
      active universe this is `STOCK_SCENE`, the byte-identical default. */
   const record = useActiveUniverseRecord();
+  /* Ambient pad — tuned to the active universe's seed, silent until sound
+     is enabled in Settings (pref changes apply live). */
+  useAmbient(record?.seed ?? null);
   const scene = React.useMemo(() => {
     const next = buildActiveScene(record);
     /* Publish + resync only on a real swap: `buildUniverseScene` returns the
@@ -197,6 +201,15 @@ export function UniverseExperience() {
   React.useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
+      // A modal dialog (Settings, new-universe) owns this press: Radix
+      // closes it without stopping propagation, so the chain must stand
+      // down — otherwise Escape would close the dialog *and* unwind the
+      // universe. React hasn't re-rendered yet when this bubble-phase
+      // listener runs, so the dialog is still in the DOM to detect.
+      // The assistant panel is `aria-modal`-null, so it stays in the chain.
+      if (document.querySelector('[role="dialog"][aria-modal="true"]')) {
+        return;
+      }
       // Escape unwinds one layer at a time: the Astra conversation first,
       // then a results frame Astra revealed, then a focused world, then a
       // timeline parked in the past (back to the present) — and only an
