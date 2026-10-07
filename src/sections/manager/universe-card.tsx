@@ -178,7 +178,23 @@ export function UniverseCard({
           }}
           role="button"
           tabIndex={0}
-          aria-label={`Open ${record.name}`}
+          /* Lighthouse 2.5.3: every visible fragment (badges, theme chip,
+             title, description) must appear verbatim in the accessible name
+             — including the innerText line breaks — so the name mirrors the
+             DOM line order, action suffix last. */
+          aria-label={`${[
+            record.archived ? "Archived" : null,
+            due !== null
+              ? due < 0
+                ? `${Math.abs(due)}d overdue`
+                : `${due}d left`
+              : null,
+            theme.label,
+            record.name,
+            record.description || null,
+          ]
+            .filter(Boolean)
+            .join("\n")} — open`}
           className="relative h-32 cursor-pointer bg-cover bg-center outline-none sm:h-36"
           style={coverStyle}
         >
@@ -242,9 +258,9 @@ export function UniverseCard({
 
           {/* name + description pinned to the bottom of the cover */}
           <div className="absolute right-3 bottom-3 left-3">
-            <h3 className="text-ink truncate text-sm font-semibold sm:text-base">
+            <h2 className="text-ink truncate text-sm font-semibold sm:text-base">
               {record.name}
-            </h3>
+            </h2>
             {record.description && (
               <p className="text-ink-muted line-clamp-1 text-xs">
                 {record.description}

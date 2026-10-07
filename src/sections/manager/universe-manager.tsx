@@ -401,7 +401,7 @@ export function UniverseManager() {
               <h1 className="tracking-title text-ink text-xl font-semibold sm:text-2xl">
                 Universe Manager
               </h1>
-              <p className="text-ink-faint text-xs">
+              <p className="text-ink-muted text-xs">
                 {count === 0
                   ? "No universes yet"
                   : `${count} universe${count === 1 ? "" : "s"} · ${visible.length} shown`}
@@ -485,7 +485,7 @@ export function UniverseManager() {
             />
 
             <div className="ml-auto flex items-center gap-2">
-              <span className="text-ink-ghost font-mono text-[10px]">
+              <span className="text-ink-muted font-mono text-[10px]">
                 {formatBytes(records.reduce((n, r) => n + recordBytes(r), 0))}{" "}
                 persisted
               </span>
@@ -582,7 +582,7 @@ export function UniverseManager() {
           {/* workspace summary */}
           {hydrated && visible.length > 0 && (
             <GlassCard tone="subtle" padding="md">
-              <div className="text-ink-faint flex flex-wrap items-center justify-between gap-3 font-mono text-[11px]">
+              <div className="text-ink-muted flex flex-wrap items-center justify-between gap-3 font-mono text-[11px]">
                 <span>
                   ACHIEVEMENTS · {unlocked}/{achievements.length} unlocked
                 </span>

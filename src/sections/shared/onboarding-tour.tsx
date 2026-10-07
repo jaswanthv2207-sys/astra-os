@@ -62,7 +62,7 @@ const MANAGER_STEPS: TourStep[] = [
     selector: '[data-tour="manager-grid"]',
     icon: "orbit",
     title: "Your universes",
-    body: "Each card is a whole solar system. Open it, rename or duplicate from its menu, and drag tiles to reorder — the order persists.",
+    body: "Each card is a whole solar system. Open it, rename, duplicate or export from its action row, and drag tiles to reorder — the order persists.",
   },
   {
     selector: '[data-tour="manager-toolbar"]',
@@ -71,6 +71,10 @@ const MANAGER_STEPS: TourStep[] = [
     body: "Find anything instantly, watch notifications, and start a new universe. Export, local backups and workspace stats live just below.",
   },
 ];
+
+/* Below `lg` the sidebar is `display: none` — spotlighting it would light
+   nothing, so the compact tour leads with the grid and the toolbar. */
+const MANAGER_STEPS_COMPACT: TourStep[] = [MANAGER_STEPS[1], MANAGER_STEPS[2]];
 
 const UNIVERSE_STEPS: TourStep[] = [
   {
@@ -125,6 +129,7 @@ export function OnboardingTour() {
   const [mounted, setMounted] = React.useState(false);
   const [active, setActive] = React.useState(false);
   const [page, setPage] = React.useState<"manager" | "universe">("manager");
+  const [compact, setCompact] = React.useState(false);
   const [step, setStep] = React.useState(0);
   const [rect, setRect] = React.useState<DOMRect | null>(null);
   const [cardH, setCardH] = React.useState(220);
@@ -136,7 +141,12 @@ export function OnboardingTour() {
   const pendingRef = React.useRef(false);
   const rectRef = React.useRef<DOMRect | null>(null);
 
-  const steps = page === "manager" ? MANAGER_STEPS : UNIVERSE_STEPS;
+  const steps =
+    page === "manager"
+      ? compact
+        ? MANAGER_STEPS_COMPACT
+        : MANAGER_STEPS
+      : UNIVERSE_STEPS;
   const current = steps[step];
   const last = step === steps.length - 1;
 
@@ -148,6 +158,8 @@ export function OnboardingTour() {
   const start = React.useCallback((target: "manager" | "universe") => {
     openerRef.current = document.activeElement as HTMLElement | null;
     setPage(target);
+    /* The sidebar only exists at ≥1024px (`hidden lg:flex`). */
+    setCompact(target === "manager" && window.innerWidth < 1024);
     setStep(0);
     setActive(true);
   }, []);
@@ -203,7 +215,10 @@ export function OnboardingTour() {
     let raf = 0;
     const sample = () => {
       const el = document.querySelector(current.selector);
-      const next = el ? el.getBoundingClientRect() : null;
+      const raw = el ? el.getBoundingClientRect() : null;
+      /* A `display: none` target measures 0×0 — treat it as absent so the
+         card centres on the flat-dim fallback instead of pinning to 0,0. */
+      const next = raw && (raw.width > 0 || raw.height > 0) ? raw : null;
       const prev = rectRef.current;
       const moved =
         !prev || !next
