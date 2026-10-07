@@ -5,13 +5,10 @@ import { motion, useReducedMotion } from "framer-motion";
 
 import { Badge, Button, Icon, Input } from "@/components";
 import type { Project } from "@/data";
+import { useRepoSimulation } from "@/hooks/use-github";
 import type { DossierWorkspace } from "@/hooks/use-workspace";
 import type { IconName } from "@/lib/icons";
-import {
-  DOC_KINDS,
-  computePlanetInsight,
-  simulateRepo,
-} from "@/lib/universe-generator";
+import { DOC_KINDS, computePlanetInsight } from "@/lib/universe-generator";
 import { cn, relativeTime } from "@/lib/utils";
 
 import { EASE, Section } from "./dossier-section";
@@ -593,10 +590,7 @@ export function DocumentsTabBody({ work }: TabBodyProps) {
 
 export function GithubTabBody({ project, work }: TabBodyProps) {
   const repo = work.meta?.repo ?? project.links.repo;
-  const sim = React.useMemo(
-    () => simulateRepo(repo, project.id),
-    [repo, project.id],
-  );
+  const sim = useRepoSimulation(repo, project.id);
   const merged = sim.pullRequests.filter((pr) => pr.state === "merged").length;
   const openPrs = sim.pullRequests.filter((pr) => pr.state === "open").length;
   const openIssues = sim.issues.filter(
@@ -872,9 +866,9 @@ export function InsightsTabBody({ project, work }: TabBodyProps) {
 /* ── Activity ───────────────────────────────────────────────────────────── */
 
 export function ActivityTabBody({ project, work }: TabBodyProps) {
-  const sim = React.useMemo(
-    () => simulateRepo(work.meta?.repo ?? project.links.repo, project.id),
-    [work.meta?.repo, project.links.repo, project.id],
+  const sim = useRepoSimulation(
+    work.meta?.repo ?? project.links.repo,
+    project.id,
   );
 
   const rows = React.useMemo(() => {
@@ -937,9 +931,9 @@ export function ActivityTabBody({ project, work }: TabBodyProps) {
 
 export function AnalyticsTabBody({ project, work }: TabBodyProps) {
   const uid = React.useId().replace(/[^a-zA-Z0-9]/g, "");
-  const sim = React.useMemo(
-    () => simulateRepo(work.meta?.repo ?? project.links.repo, project.id),
-    [work.meta?.repo, project.links.repo, project.id],
+  const sim = useRepoSimulation(
+    work.meta?.repo ?? project.links.repo,
+    project.id,
   );
 
   const now = Date.now();

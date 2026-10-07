@@ -30,6 +30,7 @@ import {
   useWorkspaceHydrated,
   workspaceActions,
 } from "@/hooks/use-workspace";
+import { openSettings } from "@/lib/settings-event";
 import { cn } from "@/lib/utils";
 import { CreateUniverse } from "@/sections/universe/create-universe";
 import type { UniverseRecord } from "@/types/workspace";
@@ -425,6 +426,7 @@ export function UniverseManager() {
                 size="sm"
                 onClick={() => setCreating(true)}
                 iconLeft={<Icon name="plus" />}
+                aria-label="New universe"
               >
                 <span className="hidden sm:inline">New universe</span>
               </Button>
@@ -469,6 +471,14 @@ export function UniverseManager() {
               iconLeft={<Icon name="shield" />}
             >
               Local backup
+            </Button>
+            <Button
+              variant="glass"
+              size="xs"
+              onClick={() => openSettings("sync")}
+              iconLeft={<Icon name="github" />}
+            >
+              Sync
             </Button>
             <WorkspaceStats
               open={statsOpen}

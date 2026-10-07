@@ -6,7 +6,9 @@ import { motion, useReducedMotion } from "framer-motion";
 
 import { Badge, Button, GlassCard, Icon } from "@/components";
 import { useSceneData, useSceneProjects } from "@/hooks/use-scene-data";
+import { useRepoFeed } from "@/hooks/use-github";
 import { useUniverse } from "@/hooks/use-universe";
+import { openSettings } from "@/lib/settings-event";
 import { aggregateRepoFeed } from "@/lib/universe-generator";
 import { cn, relativeTime } from "@/lib/utils";
 
@@ -87,9 +89,18 @@ export function UniverseHud({
   const projects = useSceneProjects();
   const scene = useSceneData();
   const focusedProject = projects.find((project) => project.id === focusedId);
-  /* One GitHub pulse across every world's repo — memoised so the ticking
-     clock and open states never re-run the simulations. */
-  const repoFeed = React.useMemo(() => aggregateRepoFeed(projects), [projects]);
+  /* One GitHub pulse across every world's repo — live REST data when a
+     token is configured, the seeded simulation otherwise (memoised so the
+     ticking clock and open states never re-run the simulations). */
+  const {
+    live,
+    loading: repoLoading,
+    refresh: refreshRepos,
+  } = useRepoFeed(projects);
+  const repoFeed = React.useMemo(
+    () => aggregateRepoFeed(projects, live),
+    [projects, live],
+  );
   const [creating, setCreating] = React.useState(false);
   const [mapOpen, setMapOpen] = React.useState(false);
   const [insightsOpen, setInsightsOpen] = React.useState(false);
@@ -365,9 +376,40 @@ export function UniverseHud({
                 <Icon name="github" size="xs" />
                 GitHub
               </p>
-              <span className="text-ink-faint text-micro font-mono tabular-nums">
-                {repoFeed.repos} repos
-              </span>
+              <div className="flex items-center gap-1.5">
+                {/* live ⇄ sim: refetch when connected, jump to Settings when not */}
+                <button
+                  type="button"
+                  onClick={() =>
+                    live ? refreshRepos() : openSettings("github")
+                  }
+                  title={
+                    live
+                      ? "Live GitHub data — click to refetch"
+                      : "Simulated activity — click to connect GitHub"
+                  }
+                  className={cn(
+                    "flex cursor-pointer items-center gap-1 rounded-full border px-1.5 py-0.5 font-mono text-[10px] tracking-wide uppercase transition-colors outline-none",
+                    "focus-visible:outline-aura-violet",
+                    live
+                      ? "border-aura-cyan/40 text-aura-cyan hover:bg-aura-cyan/10"
+                      : "border-line-strong text-ink-faint hover:text-ink-muted",
+                  )}
+                >
+                  <span
+                    aria-hidden="true"
+                    className={cn(
+                      "size-1 rounded-full",
+                      live ? "bg-aura-cyan" : "bg-ink-faint",
+                      repoLoading && "animate-pulse",
+                    )}
+                  />
+                  {repoLoading ? "sync" : live ? "live" : "sim"}
+                </button>
+                <span className="text-ink-faint text-micro font-mono tabular-nums">
+                  {repoFeed.repos} repos
+                </span>
+              </div>
             </div>
             <Badge
               variant={repoFeed.ci.passing ? "success" : "danger"}

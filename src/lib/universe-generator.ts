@@ -951,8 +951,15 @@ export interface RepoFeed {
  * @example
  * aggregateRepoFeed(projects);
  * // → { repos: 5, ci: { passing: true, passRate: 94 }, …, activity: […] }
+ *
+ * With a live cache in hand (token configured, `services/api/github`), pass
+ * it as the second argument — matching repos use the fetched simulation,
+ * the rest fall back to seeded simulation per-repo.
  */
-export function aggregateRepoFeed(projects: readonly Project[]): RepoFeed {
+export function aggregateRepoFeed(
+  projects: readonly Project[],
+  live?: ReadonlyMap<string, RepoSimulation> | null,
+): RepoFeed {
   let prsOpen = 0;
   let prsMerged = 0;
   let issuesOpen = 0;
@@ -961,7 +968,9 @@ export function aggregateRepoFeed(projects: readonly Project[]): RepoFeed {
   const activity: RepoFeedItem[] = [];
 
   for (const project of projects) {
-    const sim = simulateRepo(project.links.repo, project.id);
+    const sim =
+      live?.get(project.links.repo) ??
+      simulateRepo(project.links.repo, project.id);
     passSum += sim.ci.passRate;
     for (const name of sim.branches) branchNames.add(name);
     for (const pr of sim.pullRequests) {
