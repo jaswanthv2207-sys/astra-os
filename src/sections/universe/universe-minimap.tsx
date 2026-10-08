@@ -12,12 +12,7 @@ import { playCue } from "@/lib/audio";
 import { cn } from "@/lib/utils";
 
 import { readPlanetPosition } from "./scene/planet-registry";
-import {
-  arrivalFactor,
-  bornCount,
-  createdAt,
-  radiusFactorAt,
-} from "./timeline";
+import { arrivalOf, bornCount, radiusOf } from "./timeline";
 
 /* ────────────────────────────────────────────────────────────────────────── *
  * UniverseMinimap — the full-galaxy map: a portal overlay that projects the
@@ -298,8 +293,7 @@ function MinimapPanel({ onOpenChange }: MinimapPanelProps) {
     const projector = makeProjector(bounds, w, h);
     const rings = projects.map((project) => {
       const centre = scene.centres[project.orbit.centre] ?? scene.centres[0];
-      const radius =
-        project.orbit.radius * radiusFactorAt(viewedDate, createdAt(project));
+      const radius = project.orbit.radius * radiusOf(viewedDate, project);
       let points = "";
       for (let i = 0; i <= RING_SAMPLES; i += 1) {
         const t = (i / RING_SAMPLES) * Math.PI * 2;
@@ -549,7 +543,7 @@ function MinimapPanel({ onOpenChange }: MinimapPanelProps) {
     }
     const project = projects.find((candidate) => candidate.id === id);
     if (!project) return;
-    if (arrivalFactor(viewedDate, createdAt(project)) <= 0) return;
+    if (arrivalOf(viewedDate, project) <= 0) return;
     playCue("warp");
     const pixel = pixelOf(id);
     if (reduce || !pixel) {
@@ -919,8 +913,7 @@ function MinimapPanel({ onOpenChange }: MinimapPanelProps) {
                 {projects.map((project) => {
                   const pixel = pixelOf(project.id);
                   if (!pixel) return null;
-                  const arrived =
-                    arrivalFactor(viewedDate, createdAt(project)) > 0;
+                  const arrived = arrivalOf(viewedDate, project) > 0;
                   return (
                     <button
                       key={project.id}

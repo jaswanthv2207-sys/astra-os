@@ -29,6 +29,8 @@ import type {
   ProjectStat,
 } from "@/data";
 import type { IconName } from "@/lib/icons";
+import { relatedKnowledge } from "@/lib/knowledge-links";
+import { classifyUniverse } from "@/lib/planet-category";
 import {
   chance,
   float,
@@ -302,6 +304,19 @@ const ORBIT_SLOTS: readonly (readonly number[])[] = [
   [7, 15, 23],
   [7, 15, 23],
 ];
+
+/**
+ * The core world's free orbit slot — between slot 0 and slot 1 of centre 0.
+ * With sphere radii capped at 1.6 the reverse-triangle gap holds ≥ 0.3 units
+ * against both neighbours (6 + 2.15 = 8.15 ≤ 8.4 and 11.6 ≤ 14 − 2.15), so
+ * the knowledge core can never touch a generated planet.
+ */
+const CORE_SLOT = 10;
+
+/** Stable id of a universe's own knowledge core (scene + birth sequence). */
+export function coreProjectId(record: UniverseRecord): string {
+  return `${slugify(record.name) || "universe"}-core`;
+}
 
 /** Plane inclinations — small, readable, all different per planet. */
 function orbitPlane(rng: () => number): [number, number, number] {
@@ -607,6 +622,144 @@ export function generateScene(record: UniverseRecord): GeneratedScene {
     const a = pick(rng, projects);
     const b = pick(rng, projects);
     if (a.id !== b.id) links.push({ from: a.id, to: b.id });
+  }
+
+  /* ── the core — the universe's own knowledge node ─────────────────────────
+     Synthesised last, after every world exists, so it can be compared with
+     all of them: this is the planet the Planet Birth Experience forms when
+     the universe is created. Its palette comes from the record's category
+     (AI reads purple, frontend oceanic, backend metallic — see
+     `planet-category.ts`), jittered by the same seed so no two cores match,
+     and its radius is pinned inside the documented non-overlap envelope for
+     the free orbit slot. */
+  const identity = classifyUniverse(record);
+  const coreStack = identity.stack;
+  const coreCreatedAt = new Date(now).toISOString().slice(0, 10);
+
+  let coreDeep: string;
+  let coreMid: string;
+  let coreAccent: string;
+  let coreAtmosphere: string;
+  let coreBands: number;
+  if (identity.category === "general") {
+    /* No specific signal — take the theme-derived route every other
+       generated planet uses, so stock behaviour reads straight through. */
+    const themeAccent = mix(theme.accent, theme.accent2, float(rng, 0, 1));
+    coreDeep = shade(mix(themeAccent, "#0a0a18", 0.72), 0.9);
+    coreMid = mix(themeAccent, shade(themeAccent, 0.4), float(rng, 0.35, 0.65));
+    coreAccent = shade(mix(themeAccent, theme.accent2, 0.3), 1.55);
+    coreAtmosphere = shade(themeAccent, 1.25);
+    coreBands = Math.min(
+      1,
+      Math.max(0, identity.profile.bands + float(rng, -0.1, 0.1)),
+    );
+  } else {
+    const profile = identity.profile;
+    coreDeep = shade(profile.deep, 1 + float(rng, -0.07, 0.07));
+    coreMid = shade(
+      mix(profile.mid, theme.accent, 0.12),
+      1 + float(rng, -0.06, 0.06),
+    );
+    coreAccent = shade(profile.accent, 1 + float(rng, -0.05, 0.1));
+    coreAtmosphere = shade(
+      mix(profile.atmosphere, theme.accent2, 0.1),
+      1 + float(rng, -0.05, 0.08),
+    );
+    coreBands = Math.min(
+      1,
+      Math.max(0, profile.bands + float(rng, -0.08, 0.08)),
+    );
+  }
+
+  const slug = slugify(record.name) || "universe";
+  const coreProject: Project = {
+    id: coreProjectId(record),
+    name: record.name,
+    status: pick(rng, STATUS_WORDS) as Project["status"],
+    summary:
+      record.description.trim() ||
+      `${record.name} — the knowledge core that seeds every world in this universe.`,
+    overview: `${record.name} is the originating knowledge node of this universe. ${
+      record.description.trim() ||
+      "Its worlds orbit the intent it was created with."
+    } Every module out here links back through shared stack and language — search, the timeline and the dossier all read this world as the project itself.`,
+    stats: shuffle(rng, STAT_POOL)
+      .slice(0, 4)
+      .map((s) => ({
+        ...s,
+        value:
+          chance(rng, 0.5) && /\d/.test(s.value)
+            ? s.value
+            : `${int(rng, 40, 980)}${s.value.replace(/^[\d.,]+/, "")}`,
+      })),
+    architecture: [
+      {
+        name: "Core",
+        detail: `${coreStack[0]} surface over the record's intent.`,
+      },
+      {
+        name: "Knowledge",
+        detail: `${coreStack[1] ?? coreStack[0]} links to every generated world.`,
+      },
+      {
+        name: "Sync",
+        detail: "Timeline, search and dossier read from one record.",
+      },
+    ] satisfies ProjectLayer[],
+    timeline: [
+      { date: coreCreatedAt, label: "Universe created", status: "done" },
+      { date: coreCreatedAt, label: "Neural links mapped", status: "active" },
+      {
+        date: coreCreatedAt,
+        label: "Continuous knowledge sync",
+        status: "planned",
+      },
+    ],
+    related: [],
+    shots: shuffle(rng, SHOT_POOL)
+      .slice(0, int(rng, 2, 3))
+      .map((s) => ({ ...s })),
+    links: {
+      repo: record.githubRepo || `github.com/${slug}/${slug}-core`,
+      demo: `https://${slug}.app`,
+    },
+    stack: coreStack,
+    tags:
+      identity.category === "general"
+        ? record.tags.slice(0, 5)
+        : [...record.tags.slice(0, 5), identity.category].filter(
+            (t, i, a) => a.indexOf(t) === i,
+          ),
+    progress: 100,
+    updatedAt: coreCreatedAt,
+    createdAt: coreCreatedAt,
+    planet: {
+      radius: 1.5 + float(rng, 0, 0.1),
+      deep: coreDeep,
+      mid: coreMid,
+      accent: coreAccent,
+      atmosphere: coreAtmosphere,
+      bands: coreBands,
+      seed: int(rng, 1, 9999),
+      spin:
+        float(rng, style.spin[0], style.spin[1]) * (chance(rng, 0.35) ? -1 : 1),
+      tilt: float(rng, 0.08, 0.5),
+    },
+    orbit: {
+      centre: 0,
+      radius: CORE_SLOT,
+      phase: float(rng, 0, Math.PI * 2),
+      speed: float(rng, 0.028, 0.04) * (chance(rng, 0.35) ? -1 : 1),
+      plane: orbitPlane(rng),
+    },
+    isCore: true,
+  };
+  projects.push(coreProject);
+
+  /* Phase-6 beams live in scene data from the start — the birth sequence
+     simply holds them dark until the connection phase lights them. */
+  for (const connection of relatedKnowledge(coreProject, projects)) {
+    links.push({ from: coreProject.id, to: connection.id });
   }
 
   // related[] — mirror links so the dossier's "linked worlds" reads true.

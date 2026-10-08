@@ -125,6 +125,29 @@ export function radiusFactorAt(date: number, createdMs: number): number {
   return 1 + ARRIVAL_RADIUS * (1 - arrival);
 }
 
+/* ── knowledge core exemptions ─────────────────────────────────────────────
+ * The universe's own node is the fabric of its scene, not a world that
+ * arrives on the timeline: the Planet Birth sequence stages it in and out
+ * with its own gates, so every timeline factor reads the core as fully
+ * present — full arrival, full scale, true orbit radius — regardless of
+ * when the record was created. Stock worlds (no `isCore`) read straight
+ * through the ramped versions above, byte-for-byte unchanged. */
+
+/** Arrival of a world at `date` — 1 for knowledge cores. */
+export function arrivalOf(date: number, project: Project): number {
+  return project.isCore ? 1 : arrivalFactor(date, createdAt(project));
+}
+
+/** Visible scale of a world at `date` — 1 for knowledge cores. */
+export function scaleOf(date: number, now: number, project: Project): number {
+  return project.isCore ? 1 : worldScaleAt(date, createdAt(project), now);
+}
+
+/** Orbit-radius multiplier at `date` — 1 for knowledge cores. */
+export function radiusOf(date: number, project: Project): number {
+  return project.isCore ? 1 : radiusFactorAt(date, createdAt(project));
+}
+
 /** Static orbital phase offset for `date` — the system slowly rotates while
  *  you scrub, and is exactly back at its native phase at the present. */
 export function phaseOffsetAt(date: number, now: number): number {

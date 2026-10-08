@@ -9,7 +9,9 @@ it, time-travel through its history, and ask Astra about it.
 - `/universes` — Universe Manager: folders, search, cards, import/export,
   stats, notifications
 - `/universe` — immersive 3D experience: scene, HUD, Astra assistant,
-  dossier, timeline, minimap, insights
+  dossier, timeline, minimap, insights — and the skippable **Planet Birth**
+  cinematic (holographic init → meteor → formation → reveal) when a
+  universe is created right there
 - `/shortcuts` — keyboard reference + guided tour
 - `/design-system`, `/components` — live style guide and component gallery
 

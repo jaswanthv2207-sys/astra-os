@@ -9,7 +9,8 @@ import { useSceneData } from "@/hooks/use-scene-data";
 import { useSearchMatches } from "@/hooks/use-search";
 import { readTimelineDate } from "@/hooks/use-timeline";
 
-import { arrivalFactor, createdAt } from "../timeline";
+import { arrivalOf } from "../timeline";
+import { birthBeamGate, birthState } from "../birth/birth-state";
 import { readPlanetPosition } from "./planet-registry";
 
 /* ────────────────────────────────────────────────────────────────────────── *
@@ -557,11 +558,13 @@ export function Connections({ reduced = false }: ConnectionsProps) {
         GLOW_POINTS + FLOW_POINTS,
         weight,
       );
-      /* A beam exists only when both worlds do — min() of the two arrivals. */
-      const birth = Math.min(
-        arrivalFactor(travel, createdAt(link.a)),
-        arrivalFactor(travel, createdAt(link.b)),
-      );
+      /* A beam exists only when both worlds do — min() of the two arrivals.
+         Beams touching the born knowledge core additionally ride the birth
+         sequence's reveal gate — held dark until the connection phase lights
+         them, and fully open whenever the sequence isn't running. */
+      const birth =
+        Math.min(arrivalOf(travel, link.a), arrivalOf(travel, link.b)) *
+        birthBeamGate(link.a.isCore === true || link.b.isCore === true);
       fillScalar(
         lineBirth.array as Float32Array,
         i * (LINE_SAMPLES - 1) * 2,
@@ -575,6 +578,9 @@ export function Connections({ reduced = false }: ConnectionsProps) {
         birth,
       );
     });
+
+    /* While the sequence runs (core beams easing in), frames keep flowing. */
+    if (birthState.active) moving = true;
 
     if (moving) invalidate();
 

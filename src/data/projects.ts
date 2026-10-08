@@ -115,6 +115,9 @@ export interface Project {
   createdAt: string;
   planet: ProjectPlanet;
   orbit: ProjectOrbit;
+  /** The universe's own knowledge core — synthesised for generated scenes
+   *  (the world the Planet Birth Experience forms). Absent on stock. */
+  isCore?: boolean;
 }
 
 /**

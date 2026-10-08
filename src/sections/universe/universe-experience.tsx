@@ -27,6 +27,9 @@ import { cn } from "@/lib/utils";
 
 import { syncPlanetRegistry } from "./scene/planet-registry";
 
+import { BirthDirector } from "./birth/birth-director";
+import { isBirthActive, skipBirth } from "./birth/birth-state";
+
 import { UniverseHud } from "./universe-hud";
 import { ProjectDetailPanel } from "./project-detail-panel";
 
@@ -208,6 +211,13 @@ export function UniverseExperience() {
       // listener runs, so the dialog is still in the DOM to detect.
       // The assistant panel is `aria-modal`-null, so it stays in the chain.
       if (document.querySelector('[role="dialog"][aria-modal="true"]')) {
+        return;
+      }
+      // The Planet Birth cinematic owns the stage while it runs (its
+      // full-screen catcher blocks everything beneath it) — Escape is its
+      // skip action. Module read: no effect deps to thread.
+      if (isBirthActive()) {
+        skipBirth();
         return;
       }
       // Escape unwinds one layer at a time: the Astra conversation first,
@@ -409,6 +419,10 @@ export function UniverseExperience() {
 
       {/* ── immersive project dossier (replaces a traditional modal) ───── */}
       {showScene && <ProjectDetailPanel reduce={reduce ?? false} />}
+
+      {/* ── Planet Birth — the creation cinematic (last panel: paints over
+          the HUD/timeline at equal layer, below palette & dialogs) ────── */}
+      {showScene && <BirthDirector reduce={reduce ?? false} />}
 
       {/* ── exit curtain ───────────────────────────────────────────────── */}
       <AnimatePresence>

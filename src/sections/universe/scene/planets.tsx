@@ -15,17 +15,17 @@ import {
 } from "@/hooks/use-timeline";
 import { useUniverse } from "@/hooks/use-universe";
 
-import {
-  arrivalFactor,
-  createdAt,
-  phaseOffsetAt,
-  radiusFactorAt,
-  worldScaleAt,
-} from "../timeline";
+import { arrivalOf, phaseOffsetAt, radiusOf, scaleOf } from "../timeline";
 import { labelPortalRef } from "./label-overlay";
 import { OrbitMilestones } from "./orbit-milestones";
 import { ProjectCard } from "./planet-card";
 import { writePlanetPosition } from "./planet-registry";
+import {
+  birthHeroGate,
+  birthLabelGate,
+  birthSlowFactor,
+  useBirth,
+} from "../birth/birth-state";
 
 /** Scratch vector for per-frame world-position publishing (no allocation). */
 const WORLD_POSITION = new THREE.Vector3();
@@ -385,6 +385,32 @@ function PlanetBody({
     [atmosphere],
   );
 
+  /* Planet Birth appearance rules: the born knowledge core grows a second,
+     brighter halo shell — the "clouds" layer — only ever mounted for core
+     worlds, revealed by the sequence's staged gates. */
+  const cloudMaterial = React.useMemo(() => {
+    if (!project.isCore) return null;
+    return new THREE.ShaderMaterial({
+      vertexShader: atmosphereVertex,
+      fragmentShader: atmosphereFragment,
+      uniforms: {
+        uColor: {
+          value: new THREE.Color(atmosphere).lerp(
+            new THREE.Color("#ffffff"),
+            0.5,
+          ),
+        },
+        uHover: { value: 0 },
+        uPulse: { value: 0.5 },
+        uFade: { value: 1 },
+      },
+      transparent: true,
+      depthWrite: false,
+      side: THREE.BackSide,
+      blending: THREE.AdditiveBlending,
+    });
+  }, [project.isCore, atmosphere]);
+
   /** Moons + satellite hull: world-tinted lambert, fading with the world. */
   const craftMaterial = React.useMemo(
     () =>
@@ -428,10 +454,17 @@ function PlanetBody({
     () => () => {
       surfaceMaterial.dispose();
       atmosphereMaterial.dispose();
+      cloudMaterial?.dispose();
       craftMaterial.dispose();
       beaconMaterial.dispose();
     },
-    [surfaceMaterial, atmosphereMaterial, craftMaterial, beaconMaterial],
+    [
+      surfaceMaterial,
+      atmosphereMaterial,
+      cloudMaterial,
+      craftMaterial,
+      beaconMaterial,
+    ],
   );
 
   /* Hover response: the smoothed 0→1 amount lives in the parent ref, so
@@ -463,12 +496,25 @@ function PlanetBody({
           breathe,
       );
     }
+    /* Planet Birth: the born world gets a staged halo/cloud reveal and a
+       formation glow that eases back into its natural breath; every other
+       planet reads `birthGate === null` and runs exactly as before. */
+    const birthGate = birthHeroGate(project.id);
+    const atmFade = birthGate ? fade * birthGate.atm : fade;
+    const glow = birthGate ? Math.max(pulse, birthGate.pulse) : pulse;
     surfaceMaterial.uniforms.uHover.value = hover;
-    surfaceMaterial.uniforms.uPulse.value = pulse;
+    surfaceMaterial.uniforms.uPulse.value = glow;
     atmosphereMaterial.uniforms.uHover.value = hover;
-    atmosphereMaterial.uniforms.uPulse.value = pulse;
+    atmosphereMaterial.uniforms.uPulse.value = glow;
     surfaceMaterial.uniforms.uFade.value = fade;
-    atmosphereMaterial.uniforms.uFade.value = fade;
+    atmosphereMaterial.uniforms.uFade.value = atmFade;
+    if (cloudMaterial) {
+      cloudMaterial.uniforms.uHover.value = hover;
+      cloudMaterial.uniforms.uPulse.value = glow;
+      cloudMaterial.uniforms.uFade.value = birthGate
+        ? fade * birthGate.cloud
+        : fade;
+    }
     craftMaterial.uniforms.uFade.value = fade;
     beaconMaterial.uniforms.uTime.value = life;
     beaconMaterial.uniforms.uFade.value = fade;
@@ -515,6 +561,17 @@ function PlanetBody({
       >
         <sphereGeometry args={[1, 32, 24]} />
       </mesh>
+      {/* Core worlds only: the second halo shell — staged in by the birth
+          sequence, then a permanent part of the planet's identity. */}
+      {cloudMaterial && (
+        <mesh
+          scale={radius * 1.46}
+          frustumCulled={false}
+          material={cloudMaterial}
+        >
+          <sphereGeometry args={[1, 32, 24]} />
+        </mesh>
+      )}
       {/* ── The living ecosystem: tiny moons on inclined tracks (world two
           retrograde) and a satellite — hull, wing, blinking nav beacon —
           on a faster, steeper orbit. All of it breathes with the world
@@ -603,8 +660,12 @@ function PlanetSphere({
     if (reduced || !mesh.current) return;
     // Clamp against tab-switch delta spikes so planets don't whip around.
     // Hovering eases the spin up to 3.5× while the world is inspected.
+    // During the birth sequence every world's spin eases down with its orbit.
     mesh.current.rotation.y +=
-      Math.min(delta, 0.1) * spin * (1 + 2.5 * hoverRef.current);
+      Math.min(delta, 0.1) *
+      spin *
+      (1 + 2.5 * hoverRef.current) *
+      birthSlowFactor();
   });
 
   return (
@@ -653,8 +714,14 @@ function PlanetLabel({
   /* Same easing family as the HUD's glass motion. */
   const ease = "cubic-bezier(0.16, 1, 0.3, 1)";
   /* During a search the pill stays up: matches blaze, others fade back.
-     A world that doesn't exist yet at the viewed date stays invisible. */
-  const born = arrivalFactor(focused ? now : date, createdAt(project));
+     A world that doesn't exist yet at the viewed date stays invisible.
+     Planet Birth: the born world's pill waits behind the formation — the
+     phase flip re-renders this leaf (eight times for the whole sequence,
+     then the snapshot parks on "off") and the CSS eases it in. */
+  const birthPhase = useBirth();
+  const born =
+    arrivalOf(focused ? now : date, project) *
+    birthLabelGate(project.id, birthPhase);
   const resting = (searching ? (dimmed ? 0.22 : 1) : hovered ? 0 : 1) * born;
 
   return (
@@ -791,12 +858,21 @@ function OrbitingPlanet({
        while the viewer is parked in the past. */
     const view = focused ? nowMs : travel;
 
-    timeScaleRef.current = worldScaleAt(view, createdAt(project), nowMs);
-    timeFadeRef.current = arrivalFactor(view, createdAt(project));
+    timeScaleRef.current = scaleOf(view, nowMs, project);
+    timeFadeRef.current = arrivalOf(view, project);
+    /* Planet Birth: the born world's existence and scale are staged by the
+       sequence (gate is null for every other planet, and after the sequence);
+       every world slows to ~half speed while the universe notices one of its
+       own being formed. */
+    const birthGate = birthHeroGate(project.id);
+    if (birthGate) {
+      timeFadeRef.current = Math.min(timeFadeRef.current, birthGate.fade);
+      timeScaleRef.current = birthGate.scale;
+    }
 
     if (!reduced && pivot.current) {
       // Clamp against tab-switch delta spikes so planets don't whip around.
-      orbitAngle.current += dt * speed;
+      orbitAngle.current += dt * speed * birthSlowFactor();
     }
     if (pivot.current) {
       // Timeline phase rides on top of the crawl — exactly native at now.
@@ -805,15 +881,12 @@ function OrbitingPlanet({
     }
     if (body.current) {
       // Young worlds circle further out, tightening inward as they arrive.
-      body.current.position.x =
-        radius * radiusFactorAt(view, createdAt(project));
+      body.current.position.x = radius * radiusOf(view, project);
     }
     if (markerRing.current) {
       // Milestones ride the same tightening path as the world itself
       // (null while the timeline is at rest — the group isn't mounted).
-      markerRing.current.scale.setScalar(
-        radiusFactorAt(view, createdAt(project)),
-      );
+      markerRing.current.scale.setScalar(radiusOf(view, project));
     }
     if (hitRef.current) {
       const scale = timeScaleRef.current;

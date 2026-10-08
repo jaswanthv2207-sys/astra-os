@@ -8,12 +8,7 @@ import { type Project } from "@/data";
 import { useTimeline } from "@/hooks/use-timeline";
 import { cn } from "@/lib/utils";
 
-import {
-  arrivalFactor,
-  createdAt,
-  formatTimelineDate,
-  timelineEngaged,
-} from "../timeline";
+import { arrivalOf, formatTimelineDate, timelineEngaged } from "../timeline";
 import { labelPortalRef } from "./label-overlay";
 
 /* ────────────────────────────────────────────────────────────────────────── *
@@ -55,7 +50,7 @@ export function OrbitMilestones({
 
   const milestones = project.timeline;
   const engaged = timelineEngaged(date, now);
-  const born = arrivalFactor(date, createdAt(project));
+  const born = arrivalOf(date, project);
 
   /* Hooks stay above the early return; everything below is derived data. */
   if (!engaged || born <= 0.02 || milestones.length === 0) return null;

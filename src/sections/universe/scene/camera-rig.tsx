@@ -12,6 +12,7 @@ import { useUniverse } from "@/hooks/use-universe";
 
 import { cameraState } from "./camera-state";
 import { readPlanetPosition } from "./planet-registry";
+import { birthCameraOwned } from "../birth/birth-state";
 
 /* ────────────────────────────────────────────────────────────────────────── *
  * CameraRig — cinematic controls + the planet fly-through.
@@ -549,7 +550,9 @@ export function CameraRig({ reduced = false }: CameraRigProps) {
     <OrbitControls
       ref={controlsRef}
       makeDefault
-      enabled={!flying}
+      /* Birth sequence: while the cinematic owns the frame the controls sit
+         armed-but-dead (the takeover restores both on release). */
+      enabled={!flying && !birthCameraOwned()}
       enableDamping
       dampingFactor={0.055}
       rotateSpeed={0.55}
@@ -560,7 +563,7 @@ export function CameraRig({ reduced = false }: CameraRigProps) {
       maxDistance={240}
       minPolarAngle={0.12}
       maxPolarAngle={Math.PI - 0.12}
-      autoRotate={!reduced && engaged && !flying}
+      autoRotate={!reduced && engaged && !flying && !birthCameraOwned()}
       autoRotateSpeed={0.14}
     />
   );

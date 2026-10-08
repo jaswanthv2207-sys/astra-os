@@ -4,6 +4,8 @@ import * as React from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 
+import { birthNebulaMul } from "../birth/birth-state";
+
 /* ────────────────────────────────────────────────────────────────────────── *
  * NebulaField — colourful volumetric clouds.
  *
@@ -178,6 +180,8 @@ function NebulaCloud({
   useFrame((_, delta) => {
     if (reduced) return;
     material.uniforms.uTime.value += delta;
+    /* Birth sequence: the nebula pulses gently awake (1 = resting level). */
+    material.uniforms.uIntensity.value = intensity * birthNebulaMul();
     // Barely-there drift keeps the composition breathing.
     if (meshRef.current) meshRef.current.rotation.z += delta * 0.004;
   });

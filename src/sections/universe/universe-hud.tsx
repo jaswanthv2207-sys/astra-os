@@ -13,6 +13,7 @@ import { aggregateRepoFeed } from "@/lib/universe-generator";
 import { cn, relativeTime } from "@/lib/utils";
 
 import { CreateUniverse, CreateUniverseButton } from "./create-universe";
+import { startBirth } from "./birth/birth-state";
 import { InsightsDashboard } from "./insights-dashboard";
 import { UniverseMinimap } from "./universe-minimap";
 
@@ -251,7 +252,14 @@ export function UniverseHud({
         </div>
       </motion.header>
 
-      <CreateUniverse open={creating} onOpenChange={setCreating} />
+      <CreateUniverse
+        open={creating}
+        onOpenChange={setCreating}
+        /* Creating from the universe scene plays the Planet Birth cinematic
+           right here — the manager's copy passes no callback and its flow
+           is untouched. Reduced motion never starts it (see startBirth). */
+        onCreated={startBirth}
+      />
       <UniverseMinimap
         open={mapOpen}
         onOpenChange={setMapOpen}

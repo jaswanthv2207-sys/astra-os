@@ -283,6 +283,39 @@ log + GitHub card, and `computePlanetInsight/computeInsights/aggregateInsights`
 feed the AI dashboard (footer says it plainly: _seeded locally · no
 network_).
 
+**Planet Birth Experience** (`sections/universe/birth/` +
+`scene/birth-effects.tsx`) is the ~8s skippable creation cinematic that
+plays only when a universe is created from the `/universe` HUD "+" (the
+manager's copy passes no callback, so its flow is untouched; reduced
+motion never starts it — `startBirth()` refuses). One deterministic
+score, `birth/birth-timeline.ts`, defines the eight phases (init →
+awaken → meteor → formation → scan → connections → reveal → ending), the
+exact nine init steps, the seven scan rows and every named beat.
+Runtime state lives in the `birth-state.ts` module singleton — the scene
+reads it per frame (no React in loops), `useSyncExternalStore` gives the
+overlay its eight phase flips, and derived gates (`birthHeroGate`,
+`birthSlowFactor`, `birthStarBoost`, `birthBeamGate`, `birthCameraOwned`)
+let starfield, nebula, rings, beams, planets and controls each ride the
+sequence without knowing about it. `birth-director.tsx` owns the single
+rAF clock and renders the full-screen overlay at `z-popover`
+(pointer-events auto, so it blocks the HUD mid-sequence): init
+hologram with the ticking steps, scan cards in corner brackets, the
+"Knowledge Node Successfully Created." pill, the "Connected through …"
+chips and the always-visible Skip Animation button (Escape skips too,
+inserted in the shell's key chain above the assistant, below dialogs).
+`scene/birth-effects.tsx` mounts the energy wave, meteor, formation
+swirl and the camera takeover (hijack at the meteor, orbit reveal, eased
+return) as the scene's last child so its camera writes land last. The
+born world is **synthesised into the scene data** — `generateScene`
+appends an `isCore` project carrying the record's own name, the
+category palette from `lib/planet-category.ts` and Phase-6 beams from
+`lib/knowledge-links.ts` — so labels, dossier, minimap, search and beams
+pick it up with no special cases, and it survives rebuilds;
+`timeline.ts`'s `arrivalOf/scaleOf/radiusOf` exemptions keep the core
+fully present instead of riding the 90-day arrival ramp (the sequence's
+own gates stage it in). Skip finishes in under a second; completion
+restores the controls and leaves the planet integrated in the scene.
+
 **The Universe Manager** (`sections/manager/`) is `/universes`.
 `manager-sidebar.tsx` owns the view list (All universes, Favorites,
 Recently edited, In folders, Archive) and folders with inline rename

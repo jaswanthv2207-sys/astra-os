@@ -5,6 +5,7 @@ import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 
 import { cameraState } from "./camera-state";
+import { birthStarBoost } from "../birth/birth-state";
 
 /* ────────────────────────────────────────────────────────────────────────── *
  * StarField — thousands of animated stars as ONE draw call.
@@ -63,6 +64,7 @@ const vertexShader = /* glsl */ `
 
 const fragmentShader = /* glsl */ `
   uniform float uWarp;
+  uniform float uBright;
 
   varying vec3 vColor;
   varying float vTwinkle;
@@ -93,7 +95,10 @@ const fragmentShader = /* glsl */ `
       tint = mix(tint, vec3(0.72, 0.9, 1.0), uWarp * 0.7);
     }
 
-    gl_FragColor = vec4(tint * (0.55 + 0.85 * vTwinkle), alpha);
+    /* Planet Birth: the whole field lifts as the universe awakens — colour
+       rides the boost hard (additive → bloom), alpha only part-way, so the
+       stars brighten without washing out. */
+    gl_FragColor = vec4(tint * (0.55 + 0.85 * vTwinkle) * uBright, alpha * min(uBright, 1.35));
   }
 `;
 
@@ -186,6 +191,7 @@ export function StarField({ count = 9000, reduced = false }: StarFieldProps) {
           uPixelRatio: { value: 1 },
           uWarp: { value: 0 },
           uAspect: { value: 1 },
+          uBright: { value: 1 },
         },
       }),
     [],
@@ -208,6 +214,8 @@ export function StarField({ count = 9000, reduced = false }: StarFieldProps) {
     material.uniforms.uWarp.value = reduced
       ? 0
       : Math.min(1, Math.max(0, cameraState.warp));
+    /* Birth sequence: the awaken brightens the whole field (1 at rest). */
+    material.uniforms.uBright.value = birthStarBoost();
     if (reduced) return;
     material.uniforms.uTime.value += delta;
     if (groupRef.current) {

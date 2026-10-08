@@ -14,6 +14,7 @@ import type { BloomEffect } from "postprocessing";
 
 import { AsteroidBelts } from "./asteroid-belt";
 import { Aurora } from "./aurora";
+import { BirthEffects } from "./birth-effects";
 import { CameraRig } from "./camera-rig";
 import { cameraState } from "./camera-state";
 import { CinematicCamera } from "./cinematic-camera";
@@ -119,6 +120,11 @@ export function UniverseScene({
       <CinematicCamera reduced={reduced} />
       {/* Orbit controls + warp jumps — engages on first gesture */}
       <CameraRig reduced={reduced} />
+      {/* Planet Birth: the skippable creation cinematic's scene systems
+          (wave, meteor, formation, camera choreography). Self-gated — mounts
+          nothing while the sequence isn't running, and sits after the rig so
+          its camera writes land last each frame. */}
+      <BirthEffects />
       {/* Surges the bloom off the warp envelope + flashes (singleton reads,
           so the glow rides a jump without re-rendering the composer) */}
       <BloomDriver bloomRef={bloomRef} />

@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 
 import { ORBIT_CENTRES, type Project } from "@/data";
@@ -8,6 +9,7 @@ import { useSceneData, useSceneProjects } from "@/hooks/use-scene-data";
 import { useTimeline } from "@/hooks/use-timeline";
 
 import { timelineEngaged } from "../timeline";
+import { birthRingGlow } from "../birth/birth-state";
 
 /* ────────────────────────────────────────────────────────────────────────── *
  * OrbitRings — the visible ellipses the worlds travel.
@@ -77,11 +79,35 @@ export function OrbitRings() {
 
   const themed = scene.ambient?.showOrbitRings ?? false;
   const engaged = timelineEngaged(date, now);
-  if (!themed && !engaged) return null;
-  if (rings.length === 0) return null;
-
   const ringColor = scene.ambient?.orbitRingColor ?? "rgb(255 255 255)";
   const opacity = engaged ? ENGAGED_OPACITY : REST_OPACITY;
+
+  /* One shared, imperative material for every ring — so the birth sequence
+     can lift the whole network's glow per frame (softly, then a brightening
+     pulse as the new world's ring materialises) without re-rendering React.
+     Hooks live above the early returns; the material only compiles if a ring
+     actually draws. */
+  const material = React.useMemo(
+    () =>
+      new THREE.LineBasicMaterial({
+        color: new THREE.Color(ringColor),
+        transparent: true,
+        opacity,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+      }),
+    // The frame loop owns opacity after creation (engage + birth glow) —
+    // the material is stable across engage flips so shaders never recompile.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [ringColor],
+  );
+  React.useEffect(() => () => material.dispose(), [material]);
+  useFrame(() => {
+    material.opacity = opacity + birthRingGlow();
+  });
+
+  if (!themed && !engaged) return null;
+  if (rings.length === 0) return null;
 
   return (
     <group>
@@ -93,17 +119,10 @@ export function OrbitRings() {
         >
           <lineLoop
             geometry={circle}
+            material={material}
             scale={[ring.radius, 1, ring.radius]}
             frustumCulled={false}
-          >
-            <lineBasicMaterial
-              color={ringColor}
-              transparent
-              opacity={opacity}
-              depthWrite={false}
-              blending={THREE.AdditiveBlending}
-            />
-          </lineLoop>
+          />
         </group>
       ))}
     </group>
